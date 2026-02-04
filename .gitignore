@@ -1,0 +1,15 @@
+# Ignore dependency folders
+**/node_modules
+**/vendor
+
+# Ignore Environment Variables (Security Risk)
+.env
+**/.env
+
+# Ignore build files
+**/dist
+**/build
+
+# System files
+.DS_Store
+Thumbs.db
