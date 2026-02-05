@@ -45,7 +45,7 @@ export function EvacuationPage() {
       <div className="max-w-6xl mx-auto">
         
         {/* HEADER */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 mt-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Evacuation Centers</h1>
           <p className="text-slate-600 max-w-2xl mx-auto">
             Find the nearest safe zone. Please proceed calmly to "Open" centers only.

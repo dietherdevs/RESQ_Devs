@@ -42,7 +42,7 @@ export function FloodLevelPage() {
       <div className="max-w-4xl mx-auto">
         
         {/* HEADER */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 mt-8">
           <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
             Marikina River Monitor
           </h1>

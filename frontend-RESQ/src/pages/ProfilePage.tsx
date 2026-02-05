@@ -124,7 +124,7 @@ export function ProfilePage() {
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* HEADER */}
-        <div className="md:flex md:items-center md:justify-between">
+        <div className="md:flex md:items-center md:justify-between mt-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
             <p className="text-slate-500 mt-1">Manage your personal information and household registration.</p>

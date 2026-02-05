@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Droplets, MapPin, Phone, Activity } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png';
+
+// Make sure to put your images in the assets folder or update these paths
+import nangka from '../assets/nangka.png';
+import nangka1 from '../assets/nangka1.png';
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
@@ -13,6 +17,11 @@ interface HomePageProps {
 
 export function HomePage({ onNavigate, onShowAuth, isLoggedIn }: HomePageProps) {
   const { t } = useLanguage();
+  
+  // --- Slideshow Logic ---
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const heroImages = [nangka, nangka1];
+  
   // Mock current flood status
   const currentFloodStatus = {
     level: 0.8,
@@ -55,45 +64,41 @@ export function HomePage({ onNavigate, onShowAuth, isLoggedIn }: HomePageProps) 
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-sky-400 to-sky-500 text-white py-16 px-4">
-        <div className="max-w-4xl mx-auto text-center">
+      
+      {/* --- Hero Section (Updated) --- */}
+      <div className="relative text-white py-24 px-4 min-h-[600px] flex items-center justify-center overflow-hidden">
+        
+        {/* Background Slideshow */}
+        {heroImages.map((img, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+              index === currentSlide ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <img src={img} alt="Hero Background" className="w-full h-full object-cover" />
+            {/* Dark Overlay for Text Readability */}
+            <div className="absolute inset-0 bg-black/50" />
+          </div>
+        ))}
+
+        {/* Hero Content (Z-Index to stay on top of images) */}
+        <div className="relative z-10 max-w-4xl mx-auto text-center mt-8">
           <div className="mb-6">
             <img 
               src={logo} 
               alt="R.E.S.Q Logo" 
-              className="h-40 w-auto mx-auto"
+              className="h-40 w-auto mx-auto drop-shadow-lg mt-8"
             />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">{t('welcome')}</h1>
-          <p className="text-xl md:text-2xl mb-3 text-blue-50">{t('subtitle')}</p>
-          <p className="text-lg text-blue-50 mb-8">{t('description')}</p>
-          
-          {/* CONDITIONAL RENDERING: Only show buttons if user is NOT logged in */}
-          {!isLoggedIn && (
-            <div className="flex gap-4 justify-center flex-wrap">
-              <Button
-                onClick={() => onShowAuth('login')}
-                size="lg"
-                className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold"
-              >
-                {t('login')}
-              </Button>
-              <Button
-                onClick={() => onShowAuth('register')}
-                size="lg"
-                variant="outline"
-                className="bg-white text-sky-500 hover:bg-sky-50 border-white"
-              >
-                {t('register')}
-              </Button>
-            </div>
-          )}
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-md">{t('welcome')}</h1>
+          <p className="text-xl md:text-2xl mb-3 text-gray-100 drop-shadow-sm">{t('subtitle')}</p>
+          <p className="text-lg text-gray-200 mb-8 drop-shadow-sm">{t('description')}</p>
         </div>
       </div>
 
       {/* Current Flood Status */}
-      <div className="max-w-6xl mx-auto px-4 -mt-12">
+      <div className="max-w-6xl mx-auto px-4 mt-6 relative z-20">
         <Card className="p-6 shadow-xl border-2 border-blue-100">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
