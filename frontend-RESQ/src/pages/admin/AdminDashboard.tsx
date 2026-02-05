@@ -114,7 +114,7 @@ export function AdminDashboard() {
       <div className="max-w-7xl mx-auto">
         
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 mt-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>
             <p className="text-gray-600">Welcome back, {user?.firstName} {user?.lastName}</p>

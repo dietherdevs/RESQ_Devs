@@ -136,7 +136,7 @@ export function EvacuationStatusPage() {
       <div className="max-w-6xl mx-auto">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 mt-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-800">Evacuation Status</h1>
             <p className="text-slate-600">Manage center availability and capacity</p>

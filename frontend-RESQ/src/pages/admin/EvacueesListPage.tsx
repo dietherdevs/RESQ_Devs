@@ -282,7 +282,7 @@ export function EvacueesListPage() {
       <div className="max-w-7xl mx-auto">
         
         {/* HEADER & FILTERS */}
-        <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-8 gap-4">
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-8 gap-4 mt-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Evacuees List</h1>
             <p className="text-gray-600">Manage evacuee records and family information</p>
