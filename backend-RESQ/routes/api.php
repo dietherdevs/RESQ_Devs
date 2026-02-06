@@ -72,3 +72,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/verify-code', [AuthController::class, 'verifyCode']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+
+// Public Route (No login needed)
+Route::get('/water-level/latest', [WaterLevelLogController::class, 'getLatest']);
