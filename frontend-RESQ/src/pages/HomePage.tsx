@@ -93,7 +93,7 @@ export function HomePage({ onNavigate, onShowAuth, isLoggedIn }: HomePageProps) 
           </div>
         ))}
         <div className="relative z-10 max-w-4xl mx-auto text-center mt-8">
-          <div className="mb-6">
+          <div className="mb-2">
             <img src={logos} alt="R.E.S.Q Logo" className="h-40 w-auto mx-auto drop-shadow-lg mt-8"/>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-md">{t('welcome')}</h1>
