@@ -7,6 +7,7 @@ import { Card } from '../components/ui/card';
 import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png';
 import nangka from '../assets/nangka.png';
 import nangka1 from '../assets/nangka1.png';
+import logos from '../assets/logos.png';
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
@@ -93,7 +94,7 @@ export function HomePage({ onNavigate, onShowAuth, isLoggedIn }: HomePageProps) 
         ))}
         <div className="relative z-10 max-w-4xl mx-auto text-center mt-8">
           <div className="mb-6">
-            <img src={logo} alt="R.E.S.Q Logo" className="h-40 w-auto mx-auto drop-shadow-lg mt-8"/>
+            <img src={logos} alt="R.E.S.Q Logo" className="h-40 w-auto mx-auto drop-shadow-lg mt-8"/>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-md">{t('welcome')}</h1>
           <p className="text-xl md:text-2xl mb-3 text-gray-100 drop-shadow-sm">{t('subtitle')}</p>

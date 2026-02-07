@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Droplets, Activity, AlertTriangle, Calendar, MapPin } from 'lucide-react';
+import { Droplets, Activity, Calendar, MapPin, ExternalLink } from 'lucide-react';
 import { Card } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
 
 interface WaterLog {
   level_meters: number;
@@ -16,11 +15,9 @@ export function FloodLevelPage() {
   const [data, setData] = useState<WaterLog | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. Fetch Data from your Laravel Backend Proxy
+  // --- Fetch Data Logic ---
   const fetchData = async () => {
     try {
-      // Calls the new controller we created in Laravel
-      // Make sure your Laravel server is running on port 8000
       const response = await axios.get('http://localhost:8000/api/water-level/latest');
       setData(response.data);
     } catch (error) {
@@ -32,11 +29,22 @@ export function FloodLevelPage() {
 
   useEffect(() => {
     fetchData();
-    
-    // Auto-refresh every 30 seconds to keep data live
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // --- Helper for Colors (Matches Home Page Logic) ---
+  const getStatusColor = (status?: string) => {
+    if (status === 'Critical' || status === 'Evacuate') {
+      return { text: 'text-red-600', bg: 'bg-red-50', border: 'border-red-600', icon: 'text-red-600' };
+    }
+    if (status === 'Warning') {
+      return { text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-500', icon: 'text-orange-500' };
+    }
+    return { text: 'text-green-600', bg: 'bg-green-50', border: 'border-green-500', icon: 'text-green-500' };
+  };
+
+  const styles = getStatusColor(data?.status);
 
   if (loading) {
     return (
@@ -63,88 +71,107 @@ export function FloodLevelPage() {
           </p>
         </div>
 
-        {/* MAIN STATUS CARD */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card className={`p-8 border-t-8 shadow-lg flex flex-col justify-center items-center text-center ${
-            data?.status === 'Critical' || data?.status === 'Evacuate' ? 'border-red-600 bg-red-50' : 
-            data?.status === 'Warning' ? 'border-orange-500 bg-orange-50' : 
-            'border-blue-500 bg-white'
-          }`}>
-            <div className="mb-4 p-4 rounded-full bg-white shadow-sm">
-              <Droplets className={`w-10 h-10 ${
-                data?.status === 'Critical' || data?.status === 'Evacuate' ? 'text-red-600' : 
-                data?.status === 'Warning' ? 'text-orange-500' : 'text-blue-600'
-              }`} />
+          
+          {/* MAIN STATUS CARD */}
+          <Card className={`p-8 border-t-8 shadow-lg flex flex-col justify-center items-center text-center ${styles.border} bg-white`}>
+            
+            {/* Icon */}
+            <div className={`mb-6 p-4 rounded-full ${styles.bg} shadow-sm`}>
+              <Droplets className={`w-12 h-12 ${styles.icon}`} />
             </div>
             
-            <h2 className="text-slate-500 font-semibold uppercase tracking-wide text-sm mb-2">
+            <h2 className="text-slate-500 font-bold uppercase tracking-widest text-xs mb-2">
               Current Water Level
             </h2>
-            <div className="text-6xl font-black text-slate-900 mb-2">
-              {data?.level_meters || 0}<span className="text-2xl text-slate-500 ml-1">m</span>
+            
+            {/* Numeric Level */}
+            <div className="text-2xl font-black text-slate-900 mb-6 font-bold">
+              {data?.level_meters || 0}<span className="text-3xl text-slate-400 ml-1 font-bold">m</span>
             </div>
             
-            <Badge className={`px-4 py-2 text-lg mt-2 ${
-                data?.status === 'Critical' || data?.status === 'Evacuate' ? 'bg-red-600 hover:bg-red-700' : 
-                data?.status === 'Warning' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
-            }`}>
+            {/* Status Indicator (Styled like Home Page) */}
+            <div className={`inline-block px-8 py-3 rounded-full ${styles.bg}`}>
+              <span className={`font-bold text-xl uppercase tracking-wider ${styles.text}`}>
                 {data?.status || 'Normal'}
-            </Badge>
+              </span>
+            </div>
           </Card>
 
           {/* DETAILS CARD */}
-          <Card className="p-8 shadow-lg flex flex-col justify-center space-y-6">
-             <div className="flex items-center gap-4">
-                <div className="p-3 bg-slate-100 rounded-lg">
-                    <MapPin className="w-6 h-6 text-slate-600" />
+          <Card className="p-8 shadow-lg flex flex-col justify-center space-y-8 bg-white border-t-8 border-slate-200">
+             
+             {/* Location Info */}
+             <div className="flex items-start gap-5">
+                <div className="p-3 bg-blue-50 rounded-xl">
+                    <MapPin className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                    <p className="text-sm text-slate-500">Sensor Location</p>
-                    <p className="font-bold text-slate-800">{data?.location || 'Marikina River'}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Sensor Location</p>
+                    <p className="text-xl font-bold text-slate-800">{data?.location || 'Marikina River'}</p>
                 </div>
              </div>
 
-             <div className="flex items-center gap-4">
-                <div className="p-3 bg-slate-100 rounded-lg">
-                    <Calendar className="w-6 h-6 text-slate-600" />
+             {/* Time Info */}
+             <div className="flex items-start gap-5">
+                <div className="p-3 bg-blue-50 rounded-xl">
+                    <Calendar className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                    <p className="text-sm text-slate-500">Last Updated</p>
-                    <p className="font-bold text-slate-800">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Last Updated</p>
+                    <p className="text-xl font-bold text-slate-800">
                         {data?.recorded_at ? new Date(data.recorded_at).toLocaleString() : 'No data yet'}
                     </p>
                 </div>
              </div>
 
-             <div className="pt-4 border-t border-slate-100">
-                <p className="text-xs text-slate-400 italic">
-                    * Data Source: {data?.source || 'PAGASA API'}
-                </p>
+             {/* Clickable Source Link */}
+             <div className="pt-6 border-t border-slate-100">
+                <div className="flex items-start gap-2 text-slate-500 hover:text-blue-600 transition-colors">
+                    <ExternalLink className="w-4 h-4 mt-1 flex-shrink-0" />
+                    <p className="text-xs leading-relaxed">
+                        Data source: <br/>
+                        <a 
+                          href="https://pasig-marikina-tullahanffws.pagasa.dost.gov.ph/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="font-bold underline decoration-blue-300 hover:text-blue-700 hover:decoration-blue-600 transition-all"
+                        >
+                          PAGASA - Philippine Atmospheric, Geophysical and Astronomical Services Administration
+                        </a>
+                    </p>
+                </div>
              </div>
           </Card>
         </div>
 
         {/* ALARM LEGEND */}
-        <Card className="p-6">
-            <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-blue-600" />
+        <Card className="p-8 shadow-md border-0 bg-white">
+            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-3 text-lg">
+                <Activity className="w-6 h-6 text-blue-600" />
                 Understand the Alarms
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                    <div className="font-bold text-blue-800 mb-1">Normal</div>
-                    <div className="text-sm text-blue-600">Less than 15 meters</div>
-                    <div className="text-xs text-blue-400 mt-2">Safe condition.</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* Normal */}
+                <div className="p-6 rounded-xl bg-green-50 border border-green-100 transition-transform hover:-translate-y-1">
+                    <div className="font-extrabold text-green-700 text-lg mb-2">Normal</div>
+                    <div className="text-sm font-semibold text-green-600 mb-1">Less than 15 meters</div>
+                    <div className="text-xs text-green-500 leading-relaxed">Safe condition. No flooding expected.</div>
                 </div>
-                <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
-                    <div className="font-bold text-orange-800 mb-1">Warning (1st Alarm)</div>
-                    <div className="text-sm text-orange-600">15.0 - 15.9 meters</div>
-                    <div className="text-xs text-orange-400 mt-2">Prepare specifically for evacuation.</div>
+                
+                {/* Warning */}
+                <div className="p-6 rounded-xl bg-orange-50 border border-orange-100 transition-transform hover:-translate-y-1">
+                    <div className="font-extrabold text-orange-700 text-lg mb-2">Warning (1st Alarm)</div>
+                    <div className="text-sm font-semibold text-orange-600 mb-1">15.0 - 15.9 meters</div>
+                    <div className="text-xs text-orange-500 leading-relaxed">Prepare evacuation kits. Stay alert for updates.</div>
                 </div>
-                <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-                    <div className="font-bold text-red-800 mb-1">Critical (Evacuate)</div>
-                    <div className="text-sm text-red-600">16.0 meters and above</div>
-                    <div className="text-xs text-red-400 mt-2">Forced evacuation enforced.</div>
+                
+                {/* Critical */}
+                <div className="p-6 rounded-xl bg-red-50 border border-red-100 transition-transform hover:-translate-y-1">
+                    <div className="font-extrabold text-red-700 text-lg mb-2">Critical (Evacuate)</div>
+                    <div className="text-sm font-semibold text-red-600 mb-1">16.0 meters and above</div>
+                    <div className="text-xs text-red-500 leading-relaxed">Forced evacuation enforced. Move to higher ground immediately.</div>
                 </div>
             </div>
         </Card>

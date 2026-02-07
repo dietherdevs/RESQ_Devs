@@ -22,7 +22,7 @@ import { AboutPage } from './pages/AboutPage';
 import { StatusPage } from './pages/StatusPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ResidentHomePage } from './pages/resident/ResidentHomePage';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage'; // <--- NEW IMPORT
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 
 // --- ADMIN PAGE IMPORTS ---
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -46,7 +46,6 @@ function AppContent() {
   const [authDialog, setAuthDialog] = useState<{ isOpen: boolean; mode: 'login' | 'register' } | null>(null);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
 
-  // --- 2. ADAPTER: Convert URL path to the "ID" your Sidebar expects ---
   const getCurrentPageID = () => {
     const path = location.pathname;
     if (path === '/') return 'home';
@@ -56,16 +55,14 @@ function AppContent() {
 
   const currentPage = getCurrentPageID();
 
-  // --- 3. ADAPTER: Navigation Handler ---
   const handleNavigation = (pageId: string) => {
     if (pageId === 'home') navigate('/');
     else navigate(`/${pageId}`);
     
-    setIsSidebarOpen(false); 
+    // Note: We do NOT close sidebar here anymore for desktop logic. 
+    // The Sidebar component handles the conditional closing.
   };
 
-  // Logic to handle "Back to Login" from other pages
-  // If user navigates to /login manually, we open the dialog on Home
   useEffect(() => {
     if (location.pathname === '/login') {
       setAuthDialog({ isOpen: true, mode: 'login' });
@@ -99,113 +96,121 @@ function AppContent() {
     navigate('/admin-dashboard');
   };
 
-  // Helper for Protected Routes
   const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
-    if (!user) {
-        return <Navigate to="/" replace />;
-    }
-    if (allowedRoles && !allowedRoles.includes(user.role)) {
-        return <Navigate to="/" replace />;
-    }
+    if (!user) return <Navigate to="/" replace />;
+    if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" replace />;
     return <>{children}</>;
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col overflow-x-hidden relative w-full">
-      <Header 
-        onMenuClick={() => setIsSidebarOpen(true)} 
-        onLogoClick={handleLogoClick} 
-        onNavigate={handleNavigation} 
-      />
       
+      {/* SIDEBAR: Sits outside the transition wrapper. 
+         It is fixed to the left. 
+      */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         currentPage={currentPage}
         onNavigate={handleNavigation} 
       />
-      
-      <main className="flex-1 w-full max-w-full">
-        <Routes>
-            {/* --- PUBLIC PAGES --- */}
-            <Route path="/" element={
-                <HomePage 
-                    onNavigate={handleNavigation} 
-                    onShowAuth={(mode) => setAuthDialog({ isOpen: true, mode })} 
-                    isLoggedIn={!!user} 
-                />
-            } />
-            
-            {/* NEW FORGOT PASSWORD ROUTE */}
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-            <Route path="/flood" element={<FloodLevelPage />} />
-            <Route path="/evacuation" element={<EvacuationPage />} />
-            <Route path="/hotlines" element={<HotlinesPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/status" element={<StatusPage />} />
+      {/* MAIN LAYOUT WRAPPER: 
+         This div wraps both the Header and the Main Content.
+         It applies a left margin (ml-64) when the sidebar is open on desktop (lg:ml-64).
+         This creates the "Push" effect.
+      */}
+      <div 
+        className={`flex-1 flex flex-col min-h-screen w-full transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : ''
+        }`}
+      >
+        <Header 
+          onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+          onLogoClick={handleLogoClick} 
+          onNavigate={handleNavigation} 
+        />
+        
+        {/* MAIN CONTENT:
+            We keep the top padding (pt-32/pt-48) to clear the Fixed Header.
+        */}
+        <main className="flex-1 w-full pt-32 md:pt-48">
+          <Routes>
+              {/* --- PUBLIC PAGES --- */}
+              <Route path="/" element={
+                  <HomePage 
+                      onNavigate={handleNavigation} 
+                      onShowAuth={(mode) => setAuthDialog({ isOpen: true, mode })} 
+                      isLoggedIn={!!user} 
+                  />
+              } />
+              
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-            {/* --- PROTECTED RESIDENT PAGES --- */}
-            <Route path="/profile" element={
-                <ProtectedRoute>
-                    <ProfilePage />
-                </ProtectedRoute>
-            } />
-            
-            <Route path="/resident-home" element={
-                <ProtectedRoute> 
-                   <ResidentHomePage />
-                </ProtectedRoute>
-            } />
-            
-            {/* --- ADMIN PAGES --- */}
-            <Route path="/admin-dashboard" element={
-                <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
-                    <AdminDashboard />
-                </ProtectedRoute>
-            } />
-            <Route path="/admin-sms" element={
-                <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
-                    <SendSMSPage />
-                </ProtectedRoute>
-            } />
-            <Route path="/send-sms" element={
-                <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
-                    <SendSMSPage />
-                </ProtectedRoute>
-            } />
+              <Route path="/flood" element={<FloodLevelPage />} />
+              <Route path="/evacuation" element={<EvacuationPage />} />
+              <Route path="/hotlines" element={<HotlinesPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/status" element={<StatusPage />} />
 
-            <Route path="/admin-evacuation" element={
-                <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
-                    <EvacuationStatusPage />
-                </ProtectedRoute>
-            } />
-            
-            <Route path="/flood-level" element={
-                <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
-                    <AdminFloodPage />
-                </ProtectedRoute>
-            } />
+              {/* --- PROTECTED RESIDENT PAGES --- */}
+              <Route path="/profile" element={
+                  <ProtectedRoute>
+                      <ProfilePage />
+                  </ProtectedRoute>
+              } />
+              <Route path="/resident-home" element={
+                  <ProtectedRoute> 
+                     <ResidentHomePage />
+                  </ProtectedRoute>
+              } />
+              
+              {/* --- ADMIN PAGES --- */}
+              <Route path="/admin-dashboard" element={
+                  <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
+                      <AdminDashboard />
+                  </ProtectedRoute>
+              } />
+              <Route path="/admin-sms" element={
+                  <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
+                      <SendSMSPage />
+                  </ProtectedRoute>
+              } />
+              <Route path="/send-sms" element={
+                  <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
+                      <SendSMSPage />
+                  </ProtectedRoute>
+              } />
+              <Route path="/admin-evacuation" element={
+                  <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
+                      <EvacuationStatusPage />
+                  </ProtectedRoute>
+              } />
+              <Route path="/flood-level" element={
+                  <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
+                      <AdminFloodPage />
+                  </ProtectedRoute>
+              } />
+              <Route path="/admin-evacuees" element={
+                  <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
+                      <EvacueesListPage />
+                  </ProtectedRoute>
+              } />
+              <Route path="/admin-users" element={
+                  <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
+                      <ManageUsersPage />
+                  </ProtectedRoute>
+              } />
+              <Route path="/admin-admins" element={
+                  <ProtectedRoute allowedRoles={['superadmin']}>
+                      <ManageAdminsPage />
+                  </ProtectedRoute>
+              } />
 
-            <Route path="/admin-evacuees" element={
-                <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
-                    <EvacueesListPage />
-                </ProtectedRoute>
-            } />
-            <Route path="/admin-users" element={
-                <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
-                    <ManageUsersPage />
-                </ProtectedRoute>
-            } />
-            <Route path="/admin-admins" element={
-                <ProtectedRoute allowedRoles={['superadmin']}>
-                    <ManageAdminsPage />
-                </ProtectedRoute>
-            } />
-
-            <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
+              <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </div>
 
       {/* --- MODALS --- */}
       {authDialog?.isOpen && (

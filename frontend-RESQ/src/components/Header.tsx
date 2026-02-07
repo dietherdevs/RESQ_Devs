@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { Menu, LogOut, Settings, ChevronDown, Phone } from 'lucide-react';
 import { Switch } from './ui/switch';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,11 +7,11 @@ import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png';
 
 interface HeaderProps {
   onMenuClick: () => void;
-  onLogoClick: () => void;
+  onLogoClick: () => void; 
   onNavigate: (page: string) => void;
 }
 
-export function Header({ onMenuClick, onLogoClick, onNavigate }: HeaderProps) {
+export function Header({ onMenuClick, onNavigate }: HeaderProps) {
   const { language, setLanguage } = useLanguage();
   const { user, logout } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -26,20 +26,24 @@ export function Header({ onMenuClick, onLogoClick, onNavigate }: HeaderProps) {
     logout();
   };
 
+  // Logic: Admins -> Dashboard, Everyone else -> Home
+  const handleLogoAction = () => {
+    if (user?.role === 'admin' || user?.role === 'staff' || user?.role === 'superadmin') {
+      onNavigate('admin-dashboard');
+    } else {
+      onNavigate('home');
+    }
+  };
+
   const avatarUrl = user?.profile_image 
     ? `http://localhost:8000${user.profile_image}` 
     : `https://ui-avatars.com/api/?name=${user?.firstName}+${user?.lastName}&background=ffffff&color=0ea5e9&size=64&bold=true`;
 
   return (
     <>
-      {/* FIX: Changed 'sticky' to 'fixed'. 
-        'fixed top-0 left-0' forces it to stay at the top of the browser window 
-        regardless of parent container overflow settings.
-      */}
       <header className="bg-sky-500 text-white shadow-md fixed top-0 left-0 w-full z-50">
         
-        {/* Main Container with Spacing */}
-        {/* 'max-w-7xl mx-auto' adds the empty space on left & right */}
+        {/* Main Container */}
         <div className="flex items-center justify-between px-4 py-2 w-full max-w-7xl mx-auto">
           
           {/* Left Section: Menu & Logo */}
@@ -53,7 +57,7 @@ export function Header({ onMenuClick, onLogoClick, onNavigate }: HeaderProps) {
             </button>
             
             <button 
-              onClick={onLogoClick} 
+              onClick={handleLogoAction} 
               className="flex items-center gap-2 hover:opacity-90 transition-opacity"
               type="button"
             >
@@ -65,9 +69,18 @@ export function Header({ onMenuClick, onLogoClick, onNavigate }: HeaderProps) {
             </button>
           </div>
 
-          {/* Right Section: Language & User/Auth */}
+          {/* Right Section: Hotlines -> Language -> Auth */}
           <div className="flex items-center gap-4">
             
+            {/* --- EMERGENCY HOTLINES BUTTON --- */}
+            <button
+              onClick={() => onNavigate('hotlines')}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm transition-colors"
+            >
+              <Phone className="w-3 h-3" />
+              <span className="hidden sm:inline">HOTLINES</span>
+            </button>
+
             {/* Language Switch */}
             <div className="flex items-center gap-2 border-r border-sky-400 pr-4">
               <span className="text-xs font-bold">EN</span>
@@ -79,7 +92,7 @@ export function Header({ onMenuClick, onLogoClick, onNavigate }: HeaderProps) {
               <span className="text-xs font-bold">TL</span>
             </div>
 
-            {/* Auth Logic: Show Profile OR Login/Register */}
+            {/* Auth Logic */}
             {user ? (
               // --- LOGGED IN USER ---
               <div className="relative inline-block text-left">
@@ -118,10 +131,17 @@ export function Header({ onMenuClick, onLogoClick, onNavigate }: HeaderProps) {
                       }}
                     >
                       <div className="mb-4 border-b border-gray-100 pb-4">
-                        <p className="text-base font-bold text-gray-900 leading-tight whitespace-nowrap">
+                        {/* UPDATED: Added 'capitalize' class here.
+                            This will make 'juan dela cruz' -> 'Juan Dela Cruz' 
+                        */}
+                        <p className="text-base font-bold text-gray-900 leading-tight whitespace-nowrap capitalize">
                           {user.firstName} {user.lastName}
                         </p>
-                        <p className="text-xs text-sky-600 font-bold uppercase tracking-wider mt-1">
+                        
+                        {/* UPDATED: Removed 'uppercase', added 'capitalize'.
+                            This will make 'admin' -> 'Admin' 
+                        */}
+                        <p className="text-xs text-sky-600 font-bold capitalize tracking-wider mt-1">
                           {user.role}
                         </p>
                       </div>
@@ -156,7 +176,7 @@ export function Header({ onMenuClick, onLogoClick, onNavigate }: HeaderProps) {
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => onNavigate('login')} 
-                  className="px-4 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-sm font-semibold shadow-lg rounded shadow-sm hover:bg-sky-50 transition-colors"
+                  className="px-4 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-gray-900 text-sm font-bold shadow-sm rounded transition-colors"
                 >
                   Log In
                 </button>
@@ -171,12 +191,6 @@ export function Header({ onMenuClick, onLogoClick, onNavigate }: HeaderProps) {
           </div>
         </div>
       </header>
-
-      {/* SPACER DIV: 
-          Since the header is 'fixed', it floats over the content. 
-          This empty div pushes your page content down so it isn't hidden behind the header. 
-      */}
-      <div className="h-14 w-full"></div>
     </>
   );
 }

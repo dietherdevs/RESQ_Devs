@@ -25,11 +25,6 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
     { id: 'status', label: t('websiteStatus'), icon: Activity },
   ];
 
-  // --- RESIDENT LINKS (Profile moved to Header Dropdown) ---
-  const userPages = [
-    { id: 'resident-home', label: 'My Dashboard', icon: LayoutDashboard },
-  ];
-
   // --- STAFF/ADMIN LINKS ---
   const staffPages = [
     { id: 'admin-dashboard', label: t('dashboard'), icon: LayoutDashboard },
@@ -51,32 +46,42 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
 
   const getPages = () => {
     if (!user) return publicPages;
-    
     if (user.role === 'superadmin') return superAdminPages;
     if (user.role === 'admin') return adminPages;
     if (user.role === 'staff') return staffPages;
-    
-    // Regular residents get Public + Dashboard
-    return [...publicPages, ...userPages];
+    return [...publicPages]; 
   };
 
   const pages = getPages();
 
+  // Handle Navigation
+  const handleNavClick = (pageId: string) => {
+    onNavigate(pageId);
+    // Only close sidebar automatically on mobile
+    if (window.innerWidth < 1024) { 
+      onClose();
+    }
+  };
+
   return (
     <>
-      {/* Overlay */}
+      {/* Overlay: Mobile Only */}
+      {/* z-[100] ensures it's above the header (which is usually z-50) */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 lg:hidden"
+          style={{ zIndex: 100 }} 
           onClick={onClose}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar Container */}
+      {/* z-[101] ensures the sidebar itself is above its own overlay and the header */}
       <div
-        className={`fixed top-0 left-0 h-full bg-gradient-to-b from-sky-400 to-sky-500 text-white w-64 transform transition-transform duration-300 ease-in-out z-50 ${
+        className={`fixed top-0 left-0 h-full bg-gradient-to-b from-sky-400 to-sky-500 text-white w-64 transform transition-transform duration-300 ease-in-out shadow-2xl ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
+        style={{ zIndex: 101 }} // Force highest priority
       >
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -86,7 +91,6 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
                 src={logo} 
                 alt="R.E.S.Q Logo" 
                 className="w-10 h-10 object-contain"
-                style={{ mixBlendMode: 'lighten' }}
               />
               <span className="font-bold text-lg">R.E.S.Q</span>
             </div>
@@ -95,7 +99,7 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
             </button>
           </div>
 
-          {/* Navigation - Profile and Logout have been removed from here */}
+          {/* Navigation */}
           <nav className="flex-1 overflow-y-auto py-4">
             {pages.map((page) => {
               const Icon = page.icon;
@@ -103,10 +107,7 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
               return (
                 <button
                   key={page.id}
-                  onClick={() => {
-                    onNavigate(page.id);
-                    onClose();
-                  }}
+                  onClick={() => handleNavClick(page.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
                     isActive
                       ? 'bg-sky-600 border-l-4 border-yellow-400'
