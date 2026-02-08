@@ -12,7 +12,7 @@ import { Sidebar } from './components/Sidebar';
 import { AuthDialog } from './components/AuthDialog';
 import { AdminLoginDialog } from './components/AdminLoginDialog';
 import { Toaster } from './components/ui/sonner';
-import { Footer } from './components/Footer'; // ✅ IMPORT FOOTER
+import { Footer } from './components/Footer';
 
 // --- PAGE IMPORTS ---
 import { HomePage } from './pages/HomePage';
@@ -22,7 +22,6 @@ import { HotlinesPage } from './pages/HotlinesPage';
 import { AboutPage } from './pages/AboutPage';
 import { StatusPage } from './pages/StatusPage';
 import { ProfilePage } from './pages/ProfilePage';
-import { ResidentHomePage } from './pages/resident/ResidentHomePage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 
 // --- ADMIN PAGE IMPORTS ---
@@ -48,14 +47,14 @@ function AppContent() {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
 
   // --- 🚀 AUTOMATIC REDIRECT WATCHER ---
-  // Checks role immediately after login and redirects appropriate dashboard
+  // Checks role immediately after login.
+  // Admins go to dashboard, Residents stay on Home (/).
   useEffect(() => {
     if (user && (location.pathname === '/' || location.pathname === '/login')) {
       if (['admin', 'staff', 'superadmin'].includes(user.role)) {
         navigate('/admin-dashboard');
-      } else if (user.role === 'resident') {
-        navigate('/resident-home');
-      }
+      } 
+      // Residents are no longer redirected; they stay on '/'
     }
   }, [user, navigate, location.pathname]);
 
@@ -94,10 +93,11 @@ function AppContent() {
 
   const handleAuthSuccess = () => {
     setAuthDialog(null);
-    if (user?.role === 'resident') {
-        navigate('/resident-home');
-    } else if (user && ['admin', 'staff', 'superadmin'].includes(user.role)) {
+    if (user && ['admin', 'staff', 'superadmin'].includes(user.role)) {
         navigate('/admin-dashboard');
+    } else {
+        // Residents go to main home page
+        navigate('/');
     }
   };
 
@@ -137,7 +137,7 @@ function AppContent() {
         {/* PAGE CONTENT */}
         <main className="flex-1 w-full pt-32 md:pt-48">
           <Routes>
-              {/* --- PUBLIC PAGES --- */}
+              {/* --- PUBLIC & RESIDENT HOME PAGE --- */}
               <Route path="/" element={
                   <HomePage 
                       onNavigate={handleNavigation} 
@@ -157,11 +157,6 @@ function AppContent() {
               <Route path="/profile" element={
                   <ProtectedRoute>
                       <ProfilePage />
-                  </ProtectedRoute>
-              } />
-              <Route path="/resident-home" element={
-                  <ProtectedRoute> 
-                     <ResidentHomePage />
                   </ProtectedRoute>
               } />
               
@@ -211,7 +206,6 @@ function AppContent() {
           </Routes>
         </main>
 
-        {/* ✅ FOOTER ADDED HERE */}
         <Footer />
         
       </div>

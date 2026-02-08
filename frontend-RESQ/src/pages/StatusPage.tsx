@@ -110,7 +110,7 @@ export function StatusPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8 mt-8">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 mt-8 text-center">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">{t('websiteStatus')}</h1>

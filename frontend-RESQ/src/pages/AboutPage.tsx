@@ -1,5 +1,15 @@
 import React from 'react';
-import { AlertTriangle, Users, Shield, Smartphone, MapPin, Bell } from 'lucide-react';
+import { 
+  AlertTriangle, 
+  Users, 
+  Shield, 
+  Smartphone, 
+  MapPin, 
+  Bell, 
+  Facebook, 
+  Instagram, 
+  MessageCircle 
+} from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Card } from '../components/ui/card';
 import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png';
@@ -157,7 +167,8 @@ export function AboutPage() {
               <div>
                 <h3 className="font-semibold text-gray-800 mb-1">Take Action</h3>
                 <p className="text-gray-600 text-sm">
-                  Access evacuation center information, emergency hotlines, and follow guidance from \n                  barangay officials.
+                  Access evacuation center information, emergency hotlines, and follow guidance from 
+                  barangay officials.
                 </p>
               </div>
             </div>
@@ -171,11 +182,10 @@ export function AboutPage() {
             <p className="mb-2">Barangay Nangka, Marikina City</p>
             <p className="mb-2">Email: barangay.nangka@marikina.gov.ph</p>
             <p className="mb-2">Phone: (02) 8941-1234</p>
-            <p className="mt-4 text-sm text-gray-600">
-              For technical support and inquiries about R.E.S.Q, please contact the Barangay DRRM Office.
-            </p>
+
           </div>
         </Card>
+
       </div>
     </div>
   );
