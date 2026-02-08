@@ -6,7 +6,7 @@ import axios from 'axios';
 // correctly point to http://127.0.0.1:8000/api/login
 axios.defaults.baseURL = 'http://127.0.0.1:8000/api'; 
 axios.defaults.headers.common['Accept'] = 'application/json';
-axios.defaults.withCredentials = true; 
+axios.defaults.withCredentials = false; 
 
 export type UserRole = 'resident' | 'staff' | 'admin' | 'superadmin';
 

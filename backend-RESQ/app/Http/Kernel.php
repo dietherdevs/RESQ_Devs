@@ -63,5 +63,8 @@ class Kernel extends HttpKernel
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        
+        // ✅ ADDED THIS LINE: Now Laravel knows what "role" means!
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
     ];
 }

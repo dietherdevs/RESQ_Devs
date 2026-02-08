@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ResetPasswordOTP;
 use Carbon\Carbon;
-use Illuminate\Validation\Rules\Password; // <--- IMPORTANT: Required for strict password rules
+use Illuminate\Validation\Rules\Password; 
 
 class AuthController extends Controller
 {
-    // --- REGISTER NEW USER ---
+    // --- REGISTER NEW USER (Residents) ---
     public function register(Request $request) {
         
         // 1. Validate
@@ -22,20 +22,15 @@ class AuthController extends Controller
             'firstName'    => 'required|string',
             'lastName'     => 'required|string',
             'username'     => 'required|string|unique:users,username',
-            
-            // ✅ EMAIL IS NOW REQUIRED
             'email'        => 'required|string|email|unique:users,email',
-            
-            // ✅ STRICT PASSWORD RULES
             'password'     => [
                 'required',
-                'confirmed', // Checks if password_confirmation matches
+                'confirmed', 
                 Password::min(8)
-                    ->mixedCase() // Requires Uppercase & Lowercase
-                    ->numbers()   // Requires at least one digit
-                    ->symbols()   // Requires at least one special char (!@#$%)
+                    ->mixedCase() 
+                    ->numbers()   
+                    ->symbols()   
             ],
-
             'phone_number' => 'required|string',
             'birthdate'    => 'required|date',
             'address'      => 'required|string',
@@ -47,7 +42,7 @@ class AuthController extends Controller
             'firstName'    => $fields['firstName'],
             'lastName'     => $fields['lastName'],
             'username'     => $fields['username'],
-            'email'        => $fields['email'], // Email is now mandatory
+            'email'        => $fields['email'], 
             'password'     => Hash::make($fields['password']),
             'phone_number' => $fields['phone_number'],
             'birthdate'    => $fields['birthdate'],
@@ -70,7 +65,7 @@ class AuthController extends Controller
     // --- LOGIN (Supports Username OR Email) ---
     public function login(Request $request) {
         $fields = $request->validate([
-            'username' => 'required|string', // This input can be username OR email
+            'username' => 'required|string', 
             'password' => 'required|string'
         ]);
 
@@ -107,7 +102,7 @@ class AuthController extends Controller
     }
 
     // ==========================================
-    //      NEW FORGOT PASSWORD FUNCTIONS
+    //       FORGOT PASSWORD FUNCTIONS
     // ==========================================
 
     // 1. SEND OTP CODE
@@ -118,16 +113,16 @@ class AuthController extends Controller
         // Generate 6-digit code
         $code = rand(100000, 999999);
 
-        // Store in DB (Standard Laravel password_reset_tokens table)
+        // Store in DB 
         DB::table('password_reset_tokens')->updateOrInsert(
             ['email' => $request->email],
             [
-                'token' => $code, // We store the numeric code in the 'token' column
+                'token' => $code,
                 'created_at' => Carbon::now()
             ]
         );
 
-        // Send Email using the Mailable created earlier
+        // Send Email
         try {
             Mail::to($request->email)->send(new ResetPasswordOTP($code));
             return response()->json(['message' => 'Verification code sent']);
@@ -163,8 +158,6 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email',
             'code' => 'required|numeric',
-            
-            // ✅ APPLY STRICT RULES HERE TOO
             'password' => [
                 'required', 
                 'confirmed',
@@ -191,5 +184,58 @@ class AuthController extends Controller
         DB::table('password_reset_tokens')->where('email', $request->email)->delete();
 
         return response()->json(['message' => 'Password reset successfully']);
+    }
+
+    // ==========================================
+    //      ✅ NEW: CREATE ADMIN / STAFF
+    //      (With Error Debugging Added)
+    // ==========================================
+    public function createAdmin(Request $request)
+    {
+        try {
+            // 1. Validate incoming data
+            $fields = $request->validate([
+                'firstName' => 'required|string',
+                'lastName' => 'required|string',
+                'username' => 'required|string|unique:users,username',
+                'password' => 'required|string|confirmed', 
+                'role' => 'required|in:admin,staff', 
+                'phoneNumber' => 'required|string',
+                // Optional fields
+                'birthdate' => 'nullable',
+                'address' => 'nullable',
+                'gender' => 'nullable',
+            ]);
+
+            // 2. Create the User
+            // Note: We auto-generate a dummy email because your DB requires unique emails
+            $user = User::create([
+                'firstName' => $fields['firstName'],
+                'lastName' => $fields['lastName'],
+                'username' => $fields['username'],
+                'email' => $fields['username'] . '@resq.local', 
+                'phone_number' => $fields['phoneNumber'], // Make sure this matches your DB column (phone_number vs phoneNumber)
+                'password' => Hash::make($fields['password']),
+                'role' => $fields['role'],
+                'birthdate' => $fields['birthdate'] ?? '2000-01-01',
+                'address' => $fields['address'] ?? 'Office',
+                'gender' => $fields['gender'] ?? 'N/A',
+                'is_verified' => true, 
+            ]);
+
+            return response()->json([
+                'message' => 'Account created successfully',
+                'user' => $user
+            ], 201);
+
+        } catch (\Exception $e) {
+            // 🛑 THIS IS THE FIX:
+            // Instead of crashing silently with "500", this sends the error message back to the frontend.
+            return response()->json([
+                'message' => 'Server Error: ' . $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ], 500);
+        }
     }
 }
