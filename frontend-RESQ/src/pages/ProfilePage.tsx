@@ -34,8 +34,9 @@ export function ProfilePage() {
   // FETCH DATA
   useEffect(() => {
     fetchHouseholdData();
-    if (user?.sms_enabled) {
-        setSmsEnabled(true);
+    // Sync local state with User Context if available
+    if (user?.sms_enabled !== undefined) {
+        setSmsEnabled(user.sms_enabled);
     }
   }, [user]);
 
@@ -57,24 +58,31 @@ export function ProfilePage() {
             count_seniors: response.data.count_seniors || 0,
             count_pwds: response.data.count_pwds || 0
         });
-        if (response.data.sms_enabled !== undefined) {
-            setSmsEnabled(response.data.sms_enabled);
-        }
+      }
+      // Also check if the backend returns the SMS status here
+      if (response.data.sms_enabled !== undefined) {
+          setSmsEnabled(response.data.sms_enabled);
       }
     } catch (error) {
        // Silent fail for new users
     }
   };
 
-  // --- SMS TOGGLE HANDLER ---
+  // --- SMS TOGGLE HANDLER (CONNECTED TO BACKEND) ---
   const handleSmsToggle = async (checked: boolean) => {
-    setSmsEnabled(checked);
+    setSmsEnabled(checked); // Optimistic UI update
     setLoadingSms(true);
+    
     try {
-        await axios.post('/profile/sms-settings', { enabled: checked });
+        // ✅ UPDATED: Matches the Route we created in api.php
+        await axios.post('/profile/toggle-sms', { 
+            sms_enabled: checked 
+        });
+        
         toast.success(checked ? "SMS Alerts Enabled" : "SMS Alerts Disabled");
     } catch (error) {
-        setSmsEnabled(!checked); 
+        console.error(error);
+        setSmsEnabled(!checked); // Revert on failure
         toast.error("Failed to update SMS settings");
     } finally {
         setLoadingSms(false);
@@ -132,9 +140,10 @@ export function ProfilePage() {
         let cleanPath = user.profile_image.replace('public/', '');
         if (!cleanPath.startsWith('/')) cleanPath = `/${cleanPath}`;
         if (!cleanPath.startsWith('/storage')) cleanPath = `/storage${cleanPath}`;
-        return `http://127.0.0.1:8000${cleanPath}`;
+        // Adjust this URL if you are using ngrok vs localhost
+        return `${axios.defaults.baseURL?.replace('/api', '')}${cleanPath}`;
     }
-    return null; // Return null if no image exists so we show initials
+    return null; 
   };
 
   const finalAvatarUrl = getProfileImageUrl();
@@ -174,7 +183,7 @@ export function ProfilePage() {
                     <div className="flex flex-col items-center text-center">
                         <div className="relative group mb-4">
                             
-                            {/* --- UPDATED AVATAR LOGIC --- */}
+                            {/* --- AVATAR LOGIC --- */}
                             {finalAvatarUrl ? (
                                 <img 
                                     src={finalAvatarUrl} 
@@ -182,7 +191,6 @@ export function ProfilePage() {
                                     className="w-32 h-32 rounded-full border-4 border-sky-50 shadow-md object-cover bg-slate-100"
                                 />
                             ) : (
-                                // FALLBACK: Initials Circle
                                 <div className="w-32 h-32 rounded-full border-4 border-sky-50 shadow-md bg-blue-600 flex items-center justify-center">
                                     <span className="text-4xl font-bold text-white tracking-widest">
                                         {initials}
@@ -234,12 +242,12 @@ export function ProfilePage() {
                     </div>
                 </Card>
 
-                {/* NOTIFICATION SETTINGS (SMS) - UPDATED VISIBILITY */}
+                {/* NOTIFICATION SETTINGS (SMS) */}
                 <Card 
                     className={`p-6 shadow-sm transition-all duration-300 ${
                         smsEnabled 
-                        ? 'bg-blue-50 border-l-4 border-blue-600' // ON STATE: Blue BG & Border
-                        : 'bg-white border-l-4 border-slate-200'   // OFF STATE: White BG & Gray Border
+                        ? 'bg-blue-50 border-l-4 border-blue-600' // ON STATE
+                        : 'bg-white border-l-4 border-slate-200'   // OFF STATE
                     }`}
                 >
                     <div className="flex items-start justify-between">
@@ -257,12 +265,10 @@ export function ProfilePage() {
                             </div>
                         </div>
                         
-                        {/* FIX: Added '!bg-blue-600' to force color override.
-                           The !important flag ensures it beats any default shadcn styles.
-                        */}
                         <Switch 
                             checked={smsEnabled} 
                             onCheckedChange={handleSmsToggle}
+                            disabled={loadingSms}
                             className={`data-[state=checked]:!bg-blue-600 ${smsEnabled ? '!bg-blue-600' : ''}`}
                         />
                     </div>
