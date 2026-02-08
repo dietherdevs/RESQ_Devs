@@ -12,6 +12,7 @@ import { Sidebar } from './components/Sidebar';
 import { AuthDialog } from './components/AuthDialog';
 import { AdminLoginDialog } from './components/AdminLoginDialog';
 import { Toaster } from './components/ui/sonner';
+import { Footer } from './components/Footer'; // ✅ IMPORT FOOTER
 
 // --- PAGE IMPORTS ---
 import { HomePage } from './pages/HomePage';
@@ -33,8 +34,7 @@ import { ManageUsersPage } from './pages/admin/ManageUsersPage';
 import { ManageAdminsPage } from './pages/admin/ManageAdminsPage';
 import { FloodLevelPage as AdminFloodPage } from './pages/admin/FloodLevelPage';
 
-// Note: axios baseURL is already set in AuthContext, so we don't strictly need to set it here again,
-// but keeping it doesn't hurt.
+// --- BACKEND CONNECTION SETUP ---
 axios.defaults.baseURL = 'http://127.0.0.1:8000/api';
 axios.defaults.headers.post['Content-Type'] = 'application/json';
 
@@ -47,21 +47,17 @@ function AppContent() {
   const [authDialog, setAuthDialog] = useState<{ isOpen: boolean; mode: 'login' | 'register' } | null>(null);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
 
-  // --- 🚀 KEY FIX: AUTOMATIC REDIRECT WATCHER ---
-  // This watches the 'user' state. As soon as a user logs in, 
-  // it checks their role and redirects them if they are on the login/home page.
+  // --- 🚀 AUTOMATIC REDIRECT WATCHER ---
+  // Checks role immediately after login and redirects appropriate dashboard
   useEffect(() => {
-    // Only redirect if we are on the 'Home' page or 'Login' page
     if (user && (location.pathname === '/' || location.pathname === '/login')) {
       if (['admin', 'staff', 'superadmin'].includes(user.role)) {
-        console.log("Admin detected, redirecting to Dashboard...");
         navigate('/admin-dashboard');
       } else if (user.role === 'resident') {
         navigate('/resident-home');
       }
     }
   }, [user, navigate, location.pathname]);
-
 
   const getCurrentPageID = () => {
     const path = location.pathname;
@@ -89,7 +85,6 @@ function AppContent() {
   }, [location.pathname, navigate]);
 
   const handleLogoClick = () => {
-    // Smart Logo Click: If Admin, go to Dashboard. If Resident, go home.
     if (user && ['admin', 'staff', 'superadmin'].includes(user.role)) {
       navigate('/admin-dashboard');
     } else {
@@ -99,7 +94,6 @@ function AppContent() {
 
   const handleAuthSuccess = () => {
     setAuthDialog(null);
-    // The useEffect above will handle the redirect, but we can do a quick check here too
     if (user?.role === 'resident') {
         navigate('/resident-home');
     } else if (user && ['admin', 'staff', 'superadmin'].includes(user.role)) {
@@ -128,6 +122,7 @@ function AppContent() {
         onNavigate={handleNavigation} 
       />
 
+      {/* MAIN CONTENT WRAPPER */}
       <div 
         className={`flex-1 flex flex-col min-h-screen w-full transition-all duration-300 ease-in-out ${
           isSidebarOpen ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : ''
@@ -139,6 +134,7 @@ function AppContent() {
           onNavigate={handleNavigation} 
         />
         
+        {/* PAGE CONTENT */}
         <main className="flex-1 w-full pt-32 md:pt-48">
           <Routes>
               {/* --- PUBLIC PAGES --- */}
@@ -151,7 +147,6 @@ function AppContent() {
               } />
               
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
               <Route path="/flood" element={<FloodLevelPage />} />
               <Route path="/evacuation" element={<EvacuationPage />} />
               <Route path="/hotlines" element={<HotlinesPage />} />
@@ -215,6 +210,10 @@ function AppContent() {
               <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+
+        {/* ✅ FOOTER ADDED HERE */}
+        <Footer />
+        
       </div>
 
       {/* --- MODALS --- */}
