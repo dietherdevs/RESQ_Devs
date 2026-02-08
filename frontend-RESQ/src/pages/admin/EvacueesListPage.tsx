@@ -275,7 +275,7 @@ export function EvacueesListPage() {
       <div className="max-w-5xl mx-auto">
         
         {/* Header Block */}
-        <div className="mb-8 mt-8">
+        <div className="mb-2 mt-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Evacuees List</h1>
           <p className="text-gray-600">Manage evacuee records and family information</p>
         </div>

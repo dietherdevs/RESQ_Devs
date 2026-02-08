@@ -47,14 +47,11 @@ function AppContent() {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
 
   // --- 🚀 AUTOMATIC REDIRECT WATCHER ---
-  // Checks role immediately after login.
-  // Admins go to dashboard, Residents stay on Home (/).
   useEffect(() => {
     if (user && (location.pathname === '/' || location.pathname === '/login')) {
       if (['admin', 'staff', 'superadmin'].includes(user.role)) {
         navigate('/admin-dashboard');
       } 
-      // Residents are no longer redirected; they stay on '/'
     }
   }, [user, navigate, location.pathname]);
 
@@ -96,7 +93,6 @@ function AppContent() {
     if (user && ['admin', 'staff', 'superadmin'].includes(user.role)) {
         navigate('/admin-dashboard');
     } else {
-        // Residents go to main home page
         navigate('/');
     }
   };
@@ -113,7 +109,8 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col overflow-x-hidden relative w-full">
+    // FIX 1: Root container locks height (h-screen) and hides window scroll (overflow-hidden)
+    <div className="h-screen bg-slate-50 flex overflow-hidden w-full relative">
       
       <Sidebar
         isOpen={isSidebarOpen}
@@ -122,20 +119,21 @@ function AppContent() {
         onNavigate={handleNavigation} 
       />
 
-      {/* MAIN CONTENT WRAPPER */}
+      {/* FIX 2: This wrapper becomes the scrollable area (h-full + overflow-y-auto) */}
       <div 
-        className={`flex-1 flex flex-col min-h-screen w-full transition-all duration-300 ease-in-out ${
+        className={`flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out ${
           isSidebarOpen ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : ''
         }`}
       >
+        {/* Header will stick to the top of THIS scrollable container */}
         <Header 
           onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} 
           onLogoClick={handleLogoClick} 
           onNavigate={handleNavigation} 
         />
         
-        {/* PAGE CONTENT */}
-        <main className="flex-1 w-full pt-32 md:pt-48">
+        {/* FIX 3: Removed huge padding (pt-28/32). Sticky header handles spacing now. */}
+        <main className="flex-1 w-full p-4 md:p-8">
           <Routes>
               {/* --- PUBLIC & RESIDENT HOME PAGE --- */}
               <Route path="/" element={
