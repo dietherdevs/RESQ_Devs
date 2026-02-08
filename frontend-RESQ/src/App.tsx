@@ -33,7 +33,8 @@ import { ManageUsersPage } from './pages/admin/ManageUsersPage';
 import { ManageAdminsPage } from './pages/admin/ManageAdminsPage';
 import { FloodLevelPage as AdminFloodPage } from './pages/admin/FloodLevelPage';
 
-// --- 1. BACKEND CONNECTION SETUP ---
+// Note: axios baseURL is already set in AuthContext, so we don't strictly need to set it here again,
+// but keeping it doesn't hurt.
 axios.defaults.baseURL = 'http://127.0.0.1:8000/api';
 axios.defaults.headers.post['Content-Type'] = 'application/json';
 
@@ -45,6 +46,22 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [authDialog, setAuthDialog] = useState<{ isOpen: boolean; mode: 'login' | 'register' } | null>(null);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+
+  // --- 🚀 KEY FIX: AUTOMATIC REDIRECT WATCHER ---
+  // This watches the 'user' state. As soon as a user logs in, 
+  // it checks their role and redirects them if they are on the login/home page.
+  useEffect(() => {
+    // Only redirect if we are on the 'Home' page or 'Login' page
+    if (user && (location.pathname === '/' || location.pathname === '/login')) {
+      if (['admin', 'staff', 'superadmin'].includes(user.role)) {
+        console.log("Admin detected, redirecting to Dashboard...");
+        navigate('/admin-dashboard');
+      } else if (user.role === 'resident') {
+        navigate('/resident-home');
+      }
+    }
+  }, [user, navigate, location.pathname]);
+
 
   const getCurrentPageID = () => {
     const path = location.pathname;
@@ -58,9 +75,6 @@ function AppContent() {
   const handleNavigation = (pageId: string) => {
     if (pageId === 'home') navigate('/');
     else navigate(`/${pageId}`);
-    
-    // Note: We do NOT close sidebar here anymore for desktop logic. 
-    // The Sidebar component handles the conditional closing.
   };
 
   useEffect(() => {
@@ -75,8 +89,9 @@ function AppContent() {
   }, [location.pathname, navigate]);
 
   const handleLogoClick = () => {
-    if (user) {
-      setShowAdminLogin(true);
+    // Smart Logo Click: If Admin, go to Dashboard. If Resident, go home.
+    if (user && ['admin', 'staff', 'superadmin'].includes(user.role)) {
+      navigate('/admin-dashboard');
     } else {
       navigate('/');
     }
@@ -84,10 +99,11 @@ function AppContent() {
 
   const handleAuthSuccess = () => {
     setAuthDialog(null);
+    // The useEffect above will handle the redirect, but we can do a quick check here too
     if (user?.role === 'resident') {
         navigate('/resident-home');
-    } else {
-        navigate('/');
+    } else if (user && ['admin', 'staff', 'superadmin'].includes(user.role)) {
+        navigate('/admin-dashboard');
     }
   };
 
@@ -105,9 +121,6 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col overflow-x-hidden relative w-full">
       
-      {/* SIDEBAR: Sits outside the transition wrapper. 
-         It is fixed to the left. 
-      */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -115,11 +128,6 @@ function AppContent() {
         onNavigate={handleNavigation} 
       />
 
-      {/* MAIN LAYOUT WRAPPER: 
-         This div wraps both the Header and the Main Content.
-         It applies a left margin (ml-64) when the sidebar is open on desktop (lg:ml-64).
-         This creates the "Push" effect.
-      */}
       <div 
         className={`flex-1 flex flex-col min-h-screen w-full transition-all duration-300 ease-in-out ${
           isSidebarOpen ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : ''
@@ -131,9 +139,6 @@ function AppContent() {
           onNavigate={handleNavigation} 
         />
         
-        {/* MAIN CONTENT:
-            We keep the top padding (pt-32/pt-48) to clear the Fixed Header.
-        */}
         <main className="flex-1 w-full pt-32 md:pt-48">
           <Routes>
               {/* --- PUBLIC PAGES --- */}
