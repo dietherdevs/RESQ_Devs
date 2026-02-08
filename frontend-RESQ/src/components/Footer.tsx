@@ -35,9 +35,17 @@ export function Footer() {
         </div>
 
         {/* Copyright */}
-        <div className="text-slate-400 text-xs text-center font-medium tracking-wider uppercase">
-          &copy; 2026 R.E.S.Q. System • Designed for Barangay Nangka
-        </div>
+         {/* Disclaimer & Copyright */}
+                <div className="text-center space-y-2">
+                    <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                        © R.E.S.Q System
+                    </p>
+                    <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                        This system is a student academic project developed for Barangay Nangka. 
+                        It is <span className="font-bold text-slate-500">NOT</span> an official government website 
+                        and should be used for educational and testing purposes only.
+                    </p>
+                </div>  
 
       </div>
     </footer>

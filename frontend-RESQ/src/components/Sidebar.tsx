@@ -15,7 +15,7 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
   const { t } = useLanguage();
   const { user } = useAuth();
 
-  // --- PUBLIC LINKS ---
+  // --- PAGES CONFIGURATION ---
   const publicPages = [
     { id: 'home', label: t('home'), icon: Home },
     { id: 'flood', label: t('floodLevel'), icon: Droplets },
@@ -25,7 +25,6 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
     { id: 'status', label: t('websiteStatus'), icon: Activity },
   ];
 
-  // --- STAFF/ADMIN LINKS ---
   const staffPages = [
     { id: 'admin-dashboard', label: t('dashboard'), icon: LayoutDashboard },
     { id: 'admin-sms', label: t('sendSMS'), icon: MessageSquare },
@@ -54,10 +53,8 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
 
   const pages = getPages();
 
-  // Handle Navigation
   const handleNavClick = (pageId: string) => {
     onNavigate(pageId);
-    // Only close sidebar automatically on mobile
     if (window.innerWidth < 1024) { 
       onClose();
     }
@@ -66,7 +63,6 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
   return (
     <>
       {/* Overlay: Mobile Only */}
-      {/* z-[100] ensures it's above the header (which is usually z-50) */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 lg:hidden"
@@ -76,16 +72,20 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
       )}
 
       {/* Sidebar Container */}
-      {/* z-[101] ensures the sidebar itself is above its own overlay and the header */}
       <div
-        className={`fixed top-0 left-0 h-full bg-gradient-to-b from-sky-400 to-sky-500 text-white w-64 transform transition-transform duration-300 ease-in-out shadow-2xl ${
+        className={`fixed top-0 left-0 h-full text-white w-64 transform transition-transform duration-300 ease-in-out shadow-2xl ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
-        style={{ zIndex: 101 }} // Force highest priority
+        style={{ 
+            zIndex: 101,
+            // 🛑 FORCE COLOR HERE: This bypasses Tailwind and forces Dark Navy Blue
+            backgroundColor: '#0f172a' 
+        }} 
       >
         <div className="flex flex-col h-full">
+          
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-blue-300">
+          <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <div className="flex items-center gap-2">
               <img 
                 src={logo} 
@@ -94,7 +94,13 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
               />
               <span className="font-bold text-lg">R.E.S.Q</span>
             </div>
-            <button onClick={onClose} className="p-1 hover:bg-sky-600 rounded">
+            <button 
+                onClick={onClose} 
+                className="p-1 rounded transition-colors"
+                style={{ backgroundColor: 'transparent' }} // Default
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -104,15 +110,23 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
             {pages.map((page) => {
               const Icon = page.icon;
               const isActive = currentPage === page.id;
+              
+              // We define colors manually to ensure they work
+              const activeStyle = {
+                  backgroundColor: '#1e293b', // Lighter navy for active
+                  borderLeft: '4px solid #fbbf24' // Yellow border
+              };
+              const inactiveStyle = {
+                  backgroundColor: 'transparent',
+                  borderLeft: '4px solid transparent'
+              };
+
               return (
                 <button
                   key={page.id}
                   onClick={() => handleNavClick(page.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                    isActive
-                      ? 'bg-sky-600 border-l-4 border-yellow-400'
-                      : 'hover:bg-sky-600'
-                  }`}
+                  style={isActive ? activeStyle : inactiveStyle}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/10"
                 >
                   <Icon className="w-5 h-5" />
                   <span>{page.label}</span>
