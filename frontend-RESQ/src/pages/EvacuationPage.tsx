@@ -75,7 +75,7 @@ export function EvacuationPage() {
             <Card key={center.id} className="flex flex-col h-full border-t-4 border-blue-500 shadow-md hover:shadow-xl transition-shadow">
               
               {/* IMAGE PLACEHOLDER (Optional) */}
-              <div className="h-32 bg-slate-200 w-full flex items-center justify-center text-slate-400">
+              <div className="h-32 bg-slate-200 w-full flex items-center justify-center text-slate-400 mt-6">
                 <Home className="w-10 h-10 opacity-20" />
               </div>
 

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import { X, Mail } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { X, Mail, Check, Eye, EyeOff } from 'lucide-react'; 
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Card } from './ui/card';
@@ -25,11 +25,15 @@ const nangkaStreets = [
 
 export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
   const { t } = useLanguage();
-  const { login, register } = useAuth(); 
-  const navigate = useNavigate(); // Hook for navigation
+  const { login, register } = useAuth();
+  const navigate = useNavigate();
   
   const [currentMode, setCurrentMode] = useState(mode);
   const [loading, setLoading] = useState(false);
+
+  // --- VISIBILITY STATES ---
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
 
@@ -39,7 +43,26 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
     address: '', gender: '',
   });
 
-  // Helper: Calculate age from date string
+  // --- PASSWORD STRENGTH CHECKER ---
+  const [passwordCriteria, setPasswordCriteria] = useState({
+    length: false,
+    number: false,
+    special: false,
+    mixedCase: false
+  });
+
+  useEffect(() => {
+    const p = registerForm.password;
+    setPasswordCriteria({
+      length: p.length >= 8,
+      number: /\d/.test(p),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(p),
+      mixedCase: /[a-z]/.test(p) && /[A-Z]/.test(p)
+    });
+  }, [registerForm.password]);
+
+  const isPasswordValid = Object.values(passwordCriteria).every(Boolean);
+
   const calculateAge = (birthDateString: string) => {
     const today = new Date();
     const birthDate = new Date(birthDateString);
@@ -68,14 +91,18 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
     e.preventDefault();
     setLoading(true);
 
-    // 1. Password Match Validation
+    if (!isPasswordValid) {
+      toast.error('Please make sure your password meets all requirements.');
+      setLoading(false);
+      return;
+    }
+
     if (registerForm.password !== registerForm.confirmPassword) {
       toast.error('Passwords do not match');
       setLoading(false);
       return;
     }
 
-    // 2. Phone Number Validation (Philippine 09 format)
     const phoneRegex = /^09\d{9}$/;
     if (!phoneRegex.test(registerForm.phoneNumber)) {
       toast.error('Please enter a valid PH mobile number (e.g., 09123456789)');
@@ -83,7 +110,6 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
       return;
     }
 
-    // 3. Age Validation (Min 18)
     const age = calculateAge(registerForm.dateOfBirth);
     if (age < 18) {
       toast.error('You must be at least 18 years old to register');
@@ -96,15 +122,14 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
       toast.success('Registration successful!');
       onSuccess();
     } else {
-      toast.error('Registration failed. Username may be taken.');
+      toast.error('Registration failed. Username or Email may be taken.');
     }
     setLoading(false);
   };
 
-  // Helper to handle Forgot Password click
   const handleForgotPassword = () => {
-      onClose(); // Close the modal first
-      navigate('/forgot-password'); // Go to the page
+      onClose();
+      navigate('/forgot-password');
   };
 
   return (
@@ -119,6 +144,7 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
         </div>
 
         {currentMode === 'login' ? (
+          // --- LOGIN FORM ---
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <Label>Username or Email</Label>
@@ -130,14 +156,22 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
             </div>
             <div>
               <Label>{t('password')}</Label>
-              <Input 
-                type="password" 
-                value={loginForm.password} 
-                onChange={(e) => setLoginForm({...loginForm, password: e.target.value})} 
-                required 
-              />
-              
-              {/* --- NEW FORGOT PASSWORD LINK --- */}
+              <div className="relative">
+                <Input 
+                  type={showPassword ? "text" : "password"} 
+                  value={loginForm.password} 
+                  onChange={(e) => setLoginForm({...loginForm, password: e.target.value})} 
+                  required 
+                  className="pr-10" // Padding right so text doesn't hide behind icon
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 z-10"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               <div className="text-right mt-1">
                 <button 
                   type="button" 
@@ -147,7 +181,6 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
                   Forgot Password?
                 </button>
               </div>
-
             </div>
             <Button type="submit" className="w-full bg-sky-600 hover:bg-sky-700" disabled={loading}>
               {loading ? t('loading') : t('login')}
@@ -157,20 +190,100 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
             </p>
           </form>
         ) : (
+          // --- REGISTER FORM ---
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><Label>{t('firstName')}</Label><Input value={registerForm.firstName} onChange={(e) => setRegisterForm({...registerForm, firstName: e.target.value})} required /></div>
               <div><Label>{t('lastName')}</Label><Input value={registerForm.lastName} onChange={(e) => setRegisterForm({...registerForm, lastName: e.target.value})} required /></div>
             </div>
+            
             <div><Label>{t('username')}</Label><Input value={registerForm.username} onChange={(e) => setRegisterForm({...registerForm, username: e.target.value})} required /></div>
+            
             <div>
-              <Label>Email (Optional)</Label>
-              <div className="relative"><Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" /><Input className="pl-9" value={registerForm.email} onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})} /></div>
+              <Label>Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
+                <Input 
+                  className="pl-9" 
+                  type="email" 
+                  value={registerForm.email} 
+                  onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})} 
+                  required 
+                />
+              </div>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>{t('password')}</Label><Input type="password" value={registerForm.password} onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})} required /></div>
-              <div><Label>Confirm</Label><Input type="password" value={registerForm.confirmPassword} onChange={(e) => setRegisterForm({...registerForm, confirmPassword: e.target.value})} required /></div>
+              {/* PASSWORD FIELD */}
+              <div>
+                <Label>{t('password')}</Label>
+                <div className="relative">
+                  <Input 
+                    type={showPassword ? "text" : "password"}
+                    value={registerForm.password} 
+                    onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})} 
+                    required 
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 z-10"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* CONFIRM PASSWORD FIELD */}
+              <div>
+                <Label>Confirm</Label>
+                <div className="relative">
+                  <Input 
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={registerForm.confirmPassword} 
+                    onChange={(e) => setRegisterForm({...registerForm, confirmPassword: e.target.value})} 
+                    required 
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 z-10"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
             </div>
+
+            {/* --- PASSWORD CHECKLIST UI --- */}
+            {registerForm.password.length > 0 && (
+              <div className="bg-gray-50 p-3 rounded-md text-xs space-y-1 border border-gray-200">
+                <p className="font-semibold mb-1 text-gray-700">Password Requirements:</p>
+                
+                <div className={`flex items-center gap-2 ${passwordCriteria.length ? 'text-green-600' : 'text-gray-500'}`}>
+                  {passwordCriteria.length ? <Check className="w-3 h-3" /> : <div className="w-3 h-3 rounded-full border border-gray-400" />}
+                  <span>At least 8 characters</span>
+                </div>
+                
+                <div className={`flex items-center gap-2 ${passwordCriteria.mixedCase ? 'text-green-600' : 'text-gray-500'}`}>
+                  {passwordCriteria.mixedCase ? <Check className="w-3 h-3" /> : <div className="w-3 h-3 rounded-full border border-gray-400" />}
+                  <span>Uppercase & Lowercase letters</span>
+                </div>
+
+                <div className={`flex items-center gap-2 ${passwordCriteria.number ? 'text-green-600' : 'text-gray-500'}`}>
+                  {passwordCriteria.number ? <Check className="w-3 h-3" /> : <div className="w-3 h-3 rounded-full border border-gray-400" />}
+                  <span>At least one number</span>
+                </div>
+
+                <div className={`flex items-center gap-2 ${passwordCriteria.special ? 'text-green-600' : 'text-gray-500'}`}>
+                  {passwordCriteria.special ? <Check className="w-3 h-3" /> : <div className="w-3 h-3 rounded-full border border-gray-400" />}
+                  <span>Special character (!@#$%)</span>
+                </div>
+              </div>
+            )}
+            
             <div>
               <Label>{t('phoneNumber')}</Label>
               <Input 
@@ -180,6 +293,7 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
                 required 
               />
             </div>
+            
             <div>
               <Label>{t('dateOfBirth')}</Label>
               <Input 
@@ -189,6 +303,7 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
                 required 
               />
             </div>
+            
             <div>
               <Label>{t('address')}</Label>
               <Select onValueChange={(v) => setRegisterForm({...registerForm, address: v})}>
@@ -196,6 +311,7 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
                 <SelectContent>{nangkaStreets.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            
             <div>
               <Label>{t('gender')}</Label>
               <Select onValueChange={(v) => setRegisterForm({...registerForm, gender: v})}>
@@ -207,9 +323,11 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
                 </SelectContent>
               </Select>
             </div>
+            
             <Button type="submit" className="w-full bg-sky-600 hover:bg-sky-700" disabled={loading}>
               {loading ? t('loading') : t('register')}
             </Button>
+            
             <p className="text-center text-sm">
               {t('alreadyHaveAccount')} <button type="button" onClick={() => setCurrentMode('login')} className="text-sky-500 font-bold">{t('login')}</button>
             </p>

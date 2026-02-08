@@ -6,11 +6,11 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-// --- NEW IMPORTS FOR FORGOT PASSWORD ---
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ResetPasswordOTP;
 use Carbon\Carbon;
+use Illuminate\Validation\Rules\Password; // <--- IMPORTANT: Required for strict password rules
 
 class AuthController extends Controller
 {
@@ -23,35 +23,41 @@ class AuthController extends Controller
             'lastName'     => 'required|string',
             'username'     => 'required|string|unique:users,username',
             
-            // Allow email to be optional, but unique if provided
-            'email'        => 'nullable|string|email|unique:users,email',
+            // ✅ EMAIL IS NOW REQUIRED
+            'email'        => 'required|string|email|unique:users,email',
             
-            'password'     => 'required|string|confirmed',
+            // ✅ STRICT PASSWORD RULES
+            'password'     => [
+                'required',
+                'confirmed', // Checks if password_confirmation matches
+                Password::min(8)
+                    ->mixedCase() // Requires Uppercase & Lowercase
+                    ->numbers()   // Requires at least one digit
+                    ->symbols()   // Requires at least one special char (!@#$%)
+            ],
+
             'phone_number' => 'required|string',
             'birthdate'    => 'required|date',
             'address'      => 'required|string',
             'gender'       => 'required|string',
         ]);
 
-        // 2. Handle Email (Use provided email OR generate a placeholder)
-        $finalEmail = $request->email ? $request->email : ($fields['username'] . '@resq.local');
-
-        // 3. Create the User
+        // 2. Create the User
         $user = User::create([
             'firstName'    => $fields['firstName'],
             'lastName'     => $fields['lastName'],
             'username'     => $fields['username'],
-            'email'        => $finalEmail, // Use the logic above
+            'email'        => $fields['email'], // Email is now mandatory
             'password'     => Hash::make($fields['password']),
             'phone_number' => $fields['phone_number'],
             'birthdate'    => $fields['birthdate'],
             'address'      => $fields['address'],
             'gender'       => $fields['gender'],
             'role'         => 'resident', 
-            'is_verified'  => true        
+            'is_verified'  => false        
         ]);
 
-        // 4. Auto Login
+        // 3. Auto Login
         $token = $user->createToken('myapptoken')->plainTextToken;
 
         return response()->json([
@@ -157,7 +163,13 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email',
             'code' => 'required|numeric',
-            'password' => 'required|min:8|confirmed' // Requires password_confirmation field
+            
+            // ✅ APPLY STRICT RULES HERE TOO
+            'password' => [
+                'required', 
+                'confirmed',
+                Password::min(8)->mixedCase()->numbers()->symbols()
+            ]
         ]);
 
         // Double check code before resetting
