@@ -34,13 +34,11 @@ export function ProfilePage() {
   // FETCH DATA
   useEffect(() => {
     fetchHouseholdData();
-    // Assuming user object has sms_enabled or we fetch it separately
     if (user?.sms_enabled) {
         setSmsEnabled(true);
     }
   }, [user]);
 
-  // Clean up preview URL
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -64,19 +62,19 @@ export function ProfilePage() {
         }
       }
     } catch (error) {
-      // Normal for new users
+       // Silent fail for new users
     }
   };
 
   // --- SMS TOGGLE HANDLER ---
   const handleSmsToggle = async (checked: boolean) => {
-    setSmsEnabled(checked); // Optimistic update
+    setSmsEnabled(checked);
     setLoadingSms(true);
     try {
         await axios.post('/profile/sms-settings', { enabled: checked });
         toast.success(checked ? "SMS Alerts Enabled" : "SMS Alerts Disabled");
     } catch (error) {
-        setSmsEnabled(!checked); // Revert on error
+        setSmsEnabled(!checked); 
         toast.error("Failed to update SMS settings");
     } finally {
         setLoadingSms(false);
@@ -84,9 +82,7 @@ export function ProfilePage() {
   };
 
   // --- IMAGE HANDLERS ---
-  const handleImageClick = () => {
-    fileInputRef.current?.click();
-  };
+  const handleImageClick = () => fileInputRef.current?.click();
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -105,7 +101,6 @@ export function ProfilePage() {
   const handleImageUpload = async () => {
     if (!selectedImage) return;
     setUploading(true);
-
     const imageFormData = new FormData();
     imageFormData.append('image', selectedImage);
 
@@ -114,34 +109,36 @@ export function ProfilePage() {
           headers: { 'Content-Type': 'multipart/form-data' }
       });
       toast.success("Profile picture updated!");
-      
       handleCancelPreview();
       window.location.reload(); 
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to upload image. Max size 4MB.");
+      toast.error("Failed to upload image.");
     } finally {
       setUploading(false);
     }
   };
 
-  // --- HELPER FOR PROFILE IMAGE URL ---
+  // --- HELPER: GET INITIALS & IMAGE URL ---
+  const getInitials = () => {
+      const first = user?.firstName?.charAt(0).toUpperCase() || '';
+      const last = user?.lastName?.charAt(0).toUpperCase() || '';
+      return `${first}${last}`;
+  };
+
   const getProfileImageUrl = () => {
     if (previewUrl) return previewUrl; 
     
     if (user?.profile_image) {
-        // Fix path by removing 'public/' and ensuring '/storage' prefix
         let cleanPath = user.profile_image.replace('public/', '');
         if (!cleanPath.startsWith('/')) cleanPath = `/${cleanPath}`;
         if (!cleanPath.startsWith('/storage')) cleanPath = `/storage${cleanPath}`;
-        
         return `http://127.0.0.1:8000${cleanPath}`;
     }
-
-    return `https://ui-avatars.com/api/?name=${user?.firstName}+${user?.lastName}&background=0ea5e9&color=fff&size=128&bold=true`;
+    return null; // Return null if no image exists so we show initials
   };
 
   const finalAvatarUrl = getProfileImageUrl();
+  const initials = getInitials();
 
   // --- FORM HANDLER ---
   const handleSaveForm = async (e: React.FormEvent) => {
@@ -151,7 +148,6 @@ export function ProfilePage() {
       await axios.post('/profile/household', formData);
       toast.success("Family details saved successfully!");
     } catch (error) {
-      console.error(error);
       toast.error("Failed to save details.");
     } finally {
       setLoadingForm(false);
@@ -170,18 +166,30 @@ export function ProfilePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* LEFT COLUMN: Profile Card & SMS Settings */}
+            {/* LEFT COLUMN: Profile & SMS */}
             <div className="space-y-6">
                 
                 {/* PROFILE CARD */}
                 <Card className="p-6 bg-white border-t-4 border-sky-500 shadow-sm">
                     <div className="flex flex-col items-center text-center">
                         <div className="relative group mb-4">
-                            <img 
-                                src={finalAvatarUrl} 
-                                alt="Profile" 
-                                className="w-32 h-32 rounded-full border-4 border-sky-50 shadow-md object-cover bg-slate-100"
-                            />
+                            
+                            {/* --- UPDATED AVATAR LOGIC --- */}
+                            {finalAvatarUrl ? (
+                                <img 
+                                    src={finalAvatarUrl} 
+                                    alt="Profile" 
+                                    className="w-32 h-32 rounded-full border-4 border-sky-50 shadow-md object-cover bg-slate-100"
+                                />
+                            ) : (
+                                // FALLBACK: Initials Circle
+                                <div className="w-32 h-32 rounded-full border-4 border-sky-50 shadow-md bg-blue-600 flex items-center justify-center">
+                                    <span className="text-4xl font-bold text-white tracking-widest">
+                                        {initials}
+                                    </span>
+                                </div>
+                            )}
+
                             <button 
                                 onClick={handleImageClick}
                                 className="absolute bottom-0 right-0 bg-sky-600 text-white p-2 rounded-full shadow-lg hover:bg-sky-700 transition-colors"
@@ -197,7 +205,7 @@ export function ProfilePage() {
                             />
                         </div>
 
-                        <h2 className="text-xl font-bold text-slate-900">{user?.firstName} {user?.lastName}</h2>
+                        <h2 className="text-xl font-bold text-slate-900 capitalize">{user?.firstName} {user?.lastName}</h2>
                         <p className="text-slate-500 text-sm mb-3">{user?.email}</p>
                         
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 mb-4">
@@ -226,34 +234,38 @@ export function ProfilePage() {
                     </div>
                 </Card>
 
-                {/* NOTIFICATION SETTINGS (SMS) - UPDATED TO BLUE */}
-                <Card className="p-6 bg-white border-l-4 border-blue-500 shadow-sm">
+                {/* NOTIFICATION SETTINGS (SMS) - UPDATED VISIBILITY */}
+                <Card 
+                    className={`p-6 shadow-sm transition-all duration-300 ${
+                        smsEnabled 
+                        ? 'bg-blue-50 border-l-4 border-blue-600' // ON STATE: Blue BG & Border
+                        : 'bg-white border-l-4 border-slate-200'   // OFF STATE: White BG & Gray Border
+                    }`}
+                >
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-50 rounded-lg">
-                                <Bell className="w-6 h-6 text-blue-600" />
+                            <div className={`p-2 rounded-lg ${smsEnabled ? 'bg-white' : 'bg-slate-100'}`}>
+                                <Bell className={`w-6 h-6 ${smsEnabled ? 'text-blue-600' : 'text-slate-400'}`} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800">SMS Alerts</h3>
-                                <p className="text-xs text-slate-500 max-w-[200px]">
-                                    Receive emergency alerts directly to your phone.
+                                <h3 className={`font-bold ${smsEnabled ? 'text-blue-900' : 'text-slate-800'}`}>
+                                    SMS Alerts
+                                </h3>
+                                <p className={`text-xs ${smsEnabled ? 'text-blue-700' : 'text-slate-500'} max-w-[150px]`}>
+                                    {smsEnabled ? 'Enabled. You will receive emergency texts.' : 'Enable to receive alerts via text.'}
                                 </p>
                             </div>
                         </div>
                         
-                        {/* SWITCH UPDATED: Uses 'bg-blue-600' when checked */}
+                        {/* FIX: Added '!bg-blue-600' to force color override.
+                           The !important flag ensures it beats any default shadcn styles.
+                        */}
                         <Switch 
                             checked={smsEnabled} 
                             onCheckedChange={handleSmsToggle}
-                            className="data-[state=checked]:bg-blue-600"
+                            className={`data-[state=checked]:!bg-blue-600 ${smsEnabled ? '!bg-blue-600' : ''}`}
                         />
                     </div>
-                    {smsEnabled && (
-                        <div className="mt-4 p-3 bg-blue-50 text-blue-700 text-xs rounded-md border border-blue-100 flex items-start gap-2">
-                            <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                            <p>You will receive critical updates at <b>{formData.contact_number || 'your registered number'}</b>.</p>
-                        </div>
-                    )}
                 </Card>
 
             </div>
@@ -273,7 +285,6 @@ export function ProfilePage() {
                         </div>
 
                         <div className="space-y-6">
-                            
                             {/* Address Section */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -285,7 +296,7 @@ export function ProfilePage() {
                                         <input 
                                             type="text"
                                             required
-                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all outline-none"
+                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 transition-all outline-none"
                                             placeholder="e.g. Makabayan St."
                                             value={formData.street_name}
                                             onChange={e => setFormData({...formData, street_name: e.target.value})}
@@ -296,7 +307,7 @@ export function ProfilePage() {
                                         <input 
                                             type="text"
                                             required
-                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all outline-none"
+                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 transition-all outline-none"
                                             placeholder="e.g. 123-A"
                                             value={formData.house_number}
                                             onChange={e => setFormData({...formData, house_number: e.target.value})}
@@ -314,7 +325,7 @@ export function ProfilePage() {
                                         <input 
                                             type="tel"
                                             required
-                                            className="w-full pl-10 p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all outline-none"
+                                            className="w-full pl-10 p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-500 transition-all outline-none"
                                             placeholder="09xxxxxxxxx"
                                             value={formData.contact_number}
                                             onChange={e => setFormData({...formData, contact_number: e.target.value})}
@@ -370,7 +381,6 @@ export function ProfilePage() {
                                     </div>
                                 </div>
                             </div>
-
                         </div>
 
                         <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
