@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
+// REMOVED: import { Badge } from '../../components/ui/badge'; -> Using custom spans instead
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { toast } from 'sonner';
@@ -38,24 +38,21 @@ export function ManageAdminsPage() {
     role: 'staff' as 'staff' | 'admin',
   });
 
-  // --- 1. FETCH ADMINS FROM BACKEND ---
+  // --- 1. FETCH ADMINS ---
   const fetchAdmins = async () => {
     try {
       setLoading(true);
-      
       const response = await axios.get('/admin/list'); 
-      
       const mappedAdmins: Admin[] = response.data.map((user: any) => ({
         id: user.id.toString(),
         username: user.username,
         firstName: user.firstName || user.first_name, 
         lastName: user.lastName || user.last_name,
         phoneNumber: user.phone_number || user.phoneNumber,
-        role: user.role,
-        status: user.is_verified ? 'active' : 'suspended', // Map boolean to string status
+        role: user.role, // Ensure this matches exactly
+        status: user.is_verified ? 'active' : 'suspended',
         createdDate: new Date(user.created_at).toLocaleDateString(),
       }));
-
       setAdmins(mappedAdmins);
     } catch (error) {
       console.error(error);
@@ -90,35 +87,29 @@ export function ManageAdminsPage() {
     setEditingAdmin(admin);
     setFormData({
       username: admin.username,
-      password: '', // Leave blank to keep existing
+      password: '', 
       firstName: admin.firstName,
       lastName: admin.lastName,
       phoneNumber: admin.phoneNumber,
-      // If user is resident, default to staff in dropdown, or handle as needed
       role: (admin.role === 'resident' || admin.role === 'superadmin') ? 'staff' : admin.role,
     });
     setIsDialogOpen(true);
   };
 
-  // --- 2. DELETE ACTION ---
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this admin account? This cannot be undone.')) return;
-
+    if (!confirm('Are you sure you want to remove this admin account?')) return;
     try {
-      // Ensure you have a delete route in api.php if you want this to work
       await axios.delete(`/users/${id}`);
       setAdmins(admins.filter(a => a.id !== id));
       toast.success('Admin account removed');
     } catch (error) {
-      toast.error('Failed to delete admin. You may not have permission.');
+      toast.error('Failed to delete admin.');
     }
   };
 
-  // --- 3. TOGGLE STATUS (Optional) ---
   const handleToggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
     const oldAdmins = [...admins];
-
     setAdmins(admins.map(a => a.id === id ? { ...a, status: newStatus as any } : a));
 
     try {
@@ -130,15 +121,12 @@ export function ManageAdminsPage() {
     }
   };
 
-  // --- 4. SUBMIT FORM (CREATE / UPDATE) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!formData.username || !formData.firstName || !formData.lastName || !formData.phoneNumber) {
       toast.error('Please fill in all required fields');
       return;
     }
-
     if (!editingAdmin && !formData.password) {
       toast.error('Password is required for new accounts');
       return;
@@ -146,11 +134,9 @@ export function ManageAdminsPage() {
 
     try {
       if (editingAdmin) {
-        // ✅ UPDATE EXISTING (Use the correct route!)
         await axios.put(`/admin/users/${editingAdmin.id}`, formData);
         toast.success('Admin account updated');
       } else {
-        // CREATE NEW
         const payload = {
             ...formData,
             password_confirmation: formData.password,
@@ -158,22 +144,19 @@ export function ManageAdminsPage() {
             address: 'Office',
             gender: 'Male'
         };
-        
         await axios.post('/admin/create', payload);
         toast.success('Admin account created successfully');
       }
-
       setIsDialogOpen(false);
       resetForm();
-      fetchAdmins(); // Refresh list to show new data
+      fetchAdmins();
     } catch (error: any) {
       console.error(error);
-      const msg = error.response?.data?.message || 'Operation failed';
-      toast.error(msg);
+      toast.error(error.response?.data?.message || 'Operation failed');
     }
   };
 
-  // --- UI LOGIC ---
+  // --- UI HELPERS ---
   const filteredAdmins = admins.filter(admin =>
     admin.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     admin.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -184,28 +167,49 @@ export function ManageAdminsPage() {
   const adminCount = admins.filter(a => a.role === 'admin').length;
   const activeCount = admins.filter(a => a.status === 'active').length;
 
-  const getRoleBadge = (role: string) => {
-    // 1. Safety check for empty roles
-    if (!role) return <Badge className="bg-gray-400 text-white">No Role</Badge>;
+  // --- 🔥 FIXED: Custom Badge Component using Inline Styles ---
+  const CustomBadge = ({ label, color, textColor = '#fff' }: { label: string, color: string, textColor?: string }) => (
+    <span 
+        style={{ 
+            backgroundColor: color, 
+            color: textColor,
+            padding: '4px 10px',
+            borderRadius: '9999px',
+            fontSize: '12px',
+            fontWeight: '600',
+            display: 'inline-flex',
+            alignItems: 'center',
+            lineHeight: '1',
+            textTransform: 'capitalize',
+            border: '1px solid transparent' // Prevents outline issues
+        }}
+    >
+        {label}
+    </span>
+  );
 
-    // 2. Use toLowerCase() to handle "Resident" vs "resident"
+  const getRoleBadge = (role: string) => {
+    if (!role) return <CustomBadge label="No Role" color="#94a3b8" />; // Slate 400
+
     switch (role.toLowerCase()) {
       case 'staff': 
-        return <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white">Staff</Badge>;
-      
+        return <CustomBadge label="Staff" color="#10b981" />; // Emerald 500
       case 'admin': 
-        return <Badge className="bg-blue-500 hover:bg-blue-600 text-white">Admin</Badge>;
-      
+        return <CustomBadge label="Admin" color="#2563eb" />; // Blue 600
       case 'superadmin': 
-        return <Badge className="bg-purple-600 hover:bg-purple-700 text-white">Super Admin</Badge>;
-      
-      // ✅ ADDED: Resident needs a color (Slate/Gray)
+        return <CustomBadge label="Super Admin" color="#7c3aed" />; // Violet 600
       case 'resident': 
-        return <Badge className="bg-slate-500 hover:bg-slate-600 text-white">Resident</Badge>;
-      
+        return <CustomBadge label="Resident" color="#64748b" />; // Slate 500
       default: 
-        // ✅ FIXED: Added bg-gray-500 so unknown roles are visible (not white-on-white)
-        return <Badge className="bg-gray-500 hover:bg-gray-600 text-white capitalize">{role}</Badge>;
+        return <CustomBadge label={role} color="#6b7280" />; // Gray 500
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    if (status === 'active') {
+        return <CustomBadge label="Active" color="#dcfce7" textColor="#166534" />; // Green 100 bg, Green 800 text
+    } else {
+        return <CustomBadge label="Suspended" color="#fee2e2" textColor="#991b1b" />; // Red 100 bg, Red 800 text
     }
   };
 
@@ -214,7 +218,7 @@ export function ManageAdminsPage() {
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Manage Admins</h1>
             <p className="text-slate-500">Create and manage system access for staff and administrators.</p>
@@ -244,12 +248,12 @@ export function ManageAdminsPage() {
         {/* SEARCH */}
         <Card className="p-4 bg-white border border-slate-200 shadow-sm">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5 pointer-events-none" />
             <Input
               placeholder="Search by name, username, or role..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 border-slate-200 focus-visible:ring-sky-500"
+              className="pl-12 border-slate-200 focus-visible:ring-sky-500 h-11"
             />
           </div>
         </Card>
@@ -276,14 +280,14 @@ export function ManageAdminsPage() {
                     <ShieldCheck className="w-8 h-8 text-sky-600" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
                         <h3 className="text-lg font-bold text-slate-900">
                         {admin.firstName} {admin.lastName}
                         </h3>
+                        {/* ROLES - FORCED COLOR */}
                         {getRoleBadge(admin.role)}
-                        <Badge variant="outline" className={admin.status === 'active' ? 'text-green-600 border-green-200 bg-green-50' : 'text-red-600 border-red-200 bg-red-50'}>
-                            {admin.status}
-                        </Badge>
+                        {/* STATUS - FORCED COLOR */}
+                        {getStatusBadge(admin.status)}
                     </div>
                     <p className="text-sm text-slate-500 font-medium">@{admin.username}</p>
                     
@@ -311,7 +315,8 @@ export function ManageAdminsPage() {
                         onClick={() => handleToggleStatus(admin.id, admin.status)}
                         variant="ghost"
                         size="sm"
-                        className={admin.status === 'active' ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}
+                        style={{ color: admin.status === 'active' ? '#ea580c' : '#16a34a' }} // Orange or Green text
+                        className="hover:bg-slate-100"
                     >
                         {admin.status === 'active' ? 'Suspend' : 'Activate'}
                     </Button>
@@ -404,7 +409,7 @@ export function ManageAdminsPage() {
               <div className="space-y-2">
                 <Label htmlFor="role">Role *</Label>
                 <Select value={formData.role} onValueChange={(value: any) => setFormData({ ...formData, role: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-slate-900">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
