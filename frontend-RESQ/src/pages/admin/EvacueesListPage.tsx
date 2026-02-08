@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Users, Plus, Edit, Trash2, UserCheck, FileDown, FileSpreadsheet, Calendar, X, ArrowRight } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, FileDown, FileSpreadsheet, Calendar, X, ArrowRight } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
+import { Badge } from '../../components/ui/badge';
 import { toast } from 'sonner';
 
 // --- IMPORT EXPORT LIBRARIES ---
@@ -45,8 +46,8 @@ interface Evacuee {
   babyCount: number;
   evacuationCenter: string;
   centerId: string;
-  dateRegistered: string; // Display string
-  rawDate: string; // ISO string for accurate filtering
+  dateRegistered: string;
+  rawDate: string;
 }
 
 export function EvacueesListPage() {
@@ -54,7 +55,7 @@ export function EvacueesListPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEvacuee, setEditingEvacuee] = useState<Evacuee | null>(null);
   
-  // --- NEW STATE: DATE RANGE FILTERS ---
+  // --- DATE RANGE FILTERS ---
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -100,17 +101,10 @@ export function EvacueesListPage() {
     }
   };
 
-  // --- UPDATED FILTER LOGIC (RANGE) ---
   const filteredEvacuees = evacuees.filter(evacuee => {
-    // Get YYYY-MM-DD from the record
     const recordDate = new Date(evacuee.rawDate).toISOString().split('T')[0];
-
-    // 1. Check Start Date (if exists)
     if (startDate && recordDate < startDate) return false;
-    
-    // 2. Check End Date (if exists)
     if (endDate && recordDate > endDate) return false;
-
     return true;
   });
 
@@ -198,7 +192,7 @@ export function EvacueesListPage() {
     }
   };
 
-  // --- EXPORT FUNCTION: PDF ---
+  // --- EXPORTS ---
   const exportToPDF = () => {
     const doc = new jsPDF();
     const dataToExport = filteredEvacuees; 
@@ -207,8 +201,7 @@ export function EvacueesListPage() {
     doc.text("R.E.S.Q - Evacuees List", 14, 15);
     doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
-    
-    // Add date range info to PDF
+     
     if (startDate || endDate) {
         doc.text(`Period: ${startDate || 'Start'} to ${endDate || 'Present'}`, 14, 28);
     }
@@ -240,7 +233,6 @@ export function EvacueesListPage() {
     toast.success("PDF Exported Successfully");
   };
 
-  // --- EXPORT FUNCTION: EXCEL ---
   const exportToExcel = () => {
     const dataToExport = filteredEvacuees; 
 
@@ -270,7 +262,7 @@ export function EvacueesListPage() {
     toast.success("Excel Exported Successfully");
   };
 
-  // Stats Calculations (Based on Filtered Data)
+  // Stats
   const totalEvacuees = filteredEvacuees.reduce((sum, e) => sum + e.totalMembers, 0);
   const totalPWD = filteredEvacuees.reduce((sum, e) => sum + e.pwdCount, 0);
   const totalSenior = filteredEvacuees.reduce((sum, e) => sum + e.seniorCount, 0);
@@ -278,73 +270,17 @@ export function EvacueesListPage() {
   const totalBabies = filteredEvacuees.reduce((sum, e) => sum + e.babyCount, 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    // Outer Container matching the SMS page (plus high pt to avoid navbar overlap)
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 pt-28 md:pt-36">
+      <div className="max-w-5xl mx-auto">
         
-        {/* HEADER & FILTERS */}
-        <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-8 gap-4 mt-8">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Evacuees List</h1>
-            <p className="text-gray-600">Manage evacuee records and family information</p>
-          </div>
-          
-          <div className="flex flex-col xl:flex-row items-end xl:items-center gap-3 w-full md:w-auto">
-            
-            {/* --- NEW DATE RANGE INPUTS --- */}
-            <div className="flex flex-col sm:flex-row items-center gap-2 bg-white p-1.5 rounded-lg border shadow-sm w-full md:w-auto">
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-400 uppercase ml-2">From</span>
-                    <input 
-                        type="date" 
-                        className="p-1 text-sm outline-none bg-transparent text-gray-600 border rounded"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                    />
-                </div>
-                
-                <ArrowRight className="w-4 h-4 text-gray-300 hidden sm:block" />
-                
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-400 uppercase">To</span>
-                    <input 
-                        type="date" 
-                        className="p-1 text-sm outline-none bg-transparent text-gray-600 border rounded"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                    />
-                </div>
-
-                {(startDate || endDate) && (
-                    <button 
-                        onClick={() => { setStartDate(''); setEndDate(''); }} 
-                        className="p-1 hover:bg-red-50 text-red-400 rounded-md transition-colors ml-1"
-                        title="Clear Dates"
-                    >
-                        <X className="w-4 h-4" />
-                    </button>
-                )}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-                <Button onClick={exportToPDF} variant="outline" className="bg-white border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 hover:border-red-300">
-                    <FileDown className="w-4 h-4 mr-2" />
-                    PDF
-                </Button>
-                
-                <Button onClick={exportToExcel} variant="outline" className="bg-white border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 hover:border-green-300">
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Excel
-                </Button>
-
-                <Button onClick={handleAdd} className="bg-blue-500 hover:bg-blue-600">
-                    <Plus className="w-5 h-5 mr-2" />
-                    Add Evacuee
-                </Button>
-            </div>
-          </div>
+        {/* Header Block */}
+        <div className="mb-8 mt-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Evacuees List</h1>
+          <p className="text-gray-600">Manage evacuee records and family information</p>
         </div>
 
-        {/* Statistics (Dynamic based on filter) */}
+         {/* Statistics (Dynamic based on filter) */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <Card className="p-4 bg-blue-50 border-blue-200">
             <div className="text-2xl font-bold text-blue-600">{filteredEvacuees.length}</div>
@@ -368,84 +304,118 @@ export function EvacueesListPage() {
           </Card>
         </div>
 
-        {/* Table */}
-        {filteredEvacuees.length === 0 ? (
-          <Card className="p-12 text-center">
-            <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">No records found</h3>
-            <p className="text-gray-500 mb-4">
-                {(startDate || endDate) 
-                    ? `No evacuees found between ${startDate || 'start'} and ${endDate || 'now'}` 
-                    : 'Start by adding an evacuee family record'}
-            </p>
-            {(!startDate && !endDate) && (
-                <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="w-5 h-5 mr-2" />
-                Add First Evacuee
-                </Button>
+        {/* Toolbar: Filters & Actions */}
+        <div className="flex flex-col lg:flex-row justify-between items-end lg:items-center gap-4 mb-6">
+          {/* Date Filter Card */}
+          <Card className="p-2 px-3 w-full lg:w-auto flex flex-col sm:flex-row items-center gap-3 border-slate-200">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <span className="text-xs font-bold text-gray-400 uppercase">From</span>
+              <Input 
+                  type="date" 
+                  className="h-8 text-sm w-full sm:w-auto border-none shadow-none focus-visible:ring-0 px-1"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <ArrowRight className="w-4 h-4 text-gray-300 hidden sm:block" />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <span className="text-xs font-bold text-gray-400 uppercase">To</span>
+              <Input 
+                  type="date" 
+                  className="h-8 text-sm w-full sm:w-auto border-none shadow-none focus-visible:ring-0 px-1"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+            {(startDate || endDate) && (
+              <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => { setStartDate(''); setEndDate(''); }} 
+                  className="h-8 w-8 p-0 text-red-400 hover:text-red-500 hover:bg-red-50"
+                  title="Clear Dates"
+              >
+                  <X className="w-4 h-4" />
+              </Button>
             )}
           </Card>
-        ) : (
-          <div className="space-y-4">
-            {filteredEvacuees.map((evacuee) => (
-              <Card key={evacuee.id} className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-blue-100 p-3 rounded-full">
-                      <UserCheck className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800">{evacuee.headOfFamily}</h3>
-                      <p className="text-sm text-gray-600">{evacuee.address}</p>
-                      <p className="text-sm text-gray-600">{evacuee.phoneNumber}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={() => handleEdit(evacuee)} variant="outline" size="sm">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button onClick={() => handleDelete(evacuee.id)} variant="outline" size="sm" className="text-red-600 hover:bg-red-50">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
-                  <div>
-                    <div className="text-gray-600">Total Members</div>
-                    <div className="font-semibold text-gray-800">{evacuee.totalMembers}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-600">PWD</div>
-                    <div className="font-semibold text-purple-600">{evacuee.pwdCount}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-600">Senior</div>
-                    <div className="font-semibold text-orange-600">{evacuee.seniorCount}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-600">Pregnant</div>
-                    <div className="font-semibold text-pink-600">{evacuee.pregnantCount}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-600">Babies</div>
-                    <div className="font-semibold text-pink-600">{evacuee.babyCount}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-600">Center</div>
-                    <div className="font-semibold text-blue-600 text-xs">{evacuee.evacuationCenter}</div>
-                  </div>
-                </div>
-
-                <div className="mt-3 text-xs text-gray-500">
-                  Registered: {evacuee.dateRegistered}
-                </div>
-              </Card>
-            ))}
+          {/* Action Buttons */}
+          <div className="flex gap-2 w-full lg:w-auto">
+            <Button onClick={exportToPDF} variant="outline" className="flex-1 lg:flex-none bg-white border-slate-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200">
+              <FileDown className="w-4 h-4 mr-2" /> PDF
+            </Button>
+            <Button onClick={exportToExcel} variant="outline" className="flex-1 lg:flex-none bg-white border-slate-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200">
+              <FileSpreadsheet className="w-4 h-4 mr-2" /> Excel
+            </Button>
+            <Button onClick={handleAdd} className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" /> Add Record
+            </Button>
           </div>
-        )}
+        </div>
 
-        {/* Dialog (No Changes Here) */}
+        {/* Evacuee Records Block (Mimics "Recent SMS History") */}
+        <Card className="p-6 border-slate-200">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Family Records</h2>
+          
+          {filteredEvacuees.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+              <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <h3 className="text-lg font-medium text-gray-600 mb-1">No records found</h3>
+              <p className="text-sm text-gray-500">
+                {(startDate || endDate) ? 'Adjust your date filters to see results.' : 'Start by adding an evacuee family record.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredEvacuees.map((evacuee) => (
+                <div key={evacuee.id} className="p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-lg border border-slate-100">
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="text-base font-semibold text-gray-800">{evacuee.headOfFamily}</div>
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 font-medium">
+                          {evacuee.totalMembers} Members
+                        </Badge>
+                      </div>
+                      
+                      <div className="text-xs text-gray-500 mb-3 flex flex-wrap gap-x-3 gap-y-1 items-center">
+                        <span>{evacuee.address}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span>{evacuee.evacuationCenter}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span>{evacuee.phoneNumber}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> {evacuee.dateRegistered}</span>
+                      </div>
+                      
+                      {/* Family Vulnerabilities Badges */}
+                      <div className="flex flex-wrap gap-2">
+                        {evacuee.pwdCount > 0 && <Badge variant="outline" className="border-purple-200 text-purple-700 bg-purple-50">PWD: {evacuee.pwdCount}</Badge>}
+                        {evacuee.seniorCount > 0 && <Badge variant="outline" className="border-orange-200 text-orange-700 bg-orange-50">Senior: {evacuee.seniorCount}</Badge>}
+                        {evacuee.pregnantCount > 0 && <Badge variant="outline" className="border-pink-200 text-pink-700 bg-pink-50">Pregnant: {evacuee.pregnantCount}</Badge>}
+                        {evacuee.babyCount > 0 && <Badge variant="outline" className="border-pink-200 text-pink-700 bg-pink-50">Baby: {evacuee.babyCount}</Badge>}
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-1 w-full sm:w-auto justify-end">
+                      <Button onClick={() => handleEdit(evacuee)} variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50">
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button onClick={() => handleDelete(evacuee.id)} variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-500 hover:text-red-600 hover:bg-red-50">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
