@@ -26,7 +26,6 @@ export function Header({ onMenuClick, onNavigate }: HeaderProps) {
     logout();
   };
 
-  // Logic: Admins -> Dashboard, Everyone else -> Home
   const handleLogoAction = () => {
     if (user?.role === 'admin' || user?.role === 'staff' || user?.role === 'superadmin') {
       onNavigate('admin-dashboard');
@@ -42,11 +41,9 @@ export function Header({ onMenuClick, onNavigate }: HeaderProps) {
   return (
     <>
       <header className="bg-sky-500 text-white shadow-md fixed top-0 left-0 w-full z-50">
-        
-        {/* Main Container */}
         <div className="flex items-center justify-between px-4 py-2 w-full max-w-7xl mx-auto">
           
-          {/* Left Section: Menu & Logo */}
+          {/* Left Section */}
           <div className="flex items-center gap-3">
             <button 
               onClick={onMenuClick} 
@@ -69,10 +66,9 @@ export function Header({ onMenuClick, onNavigate }: HeaderProps) {
             </button>
           </div>
 
-          {/* Right Section: Hotlines -> Language -> Auth */}
+          {/* Right Section */}
           <div className="flex items-center gap-4">
             
-            {/* --- EMERGENCY HOTLINES BUTTON --- */}
             <button
               onClick={() => onNavigate('hotlines')}
               className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm transition-colors"
@@ -81,7 +77,6 @@ export function Header({ onMenuClick, onNavigate }: HeaderProps) {
               <span className="hidden sm:inline">HOTLINES</span>
             </button>
 
-            {/* Language Switch */}
             <div className="flex items-center gap-2 border-r border-sky-400 pr-4">
               <span className="text-xs font-bold">EN</span>
               <Switch
@@ -92,9 +87,7 @@ export function Header({ onMenuClick, onNavigate }: HeaderProps) {
               <span className="text-xs font-bold">TL</span>
             </div>
 
-            {/* Auth Logic */}
             {user ? (
-              // --- LOGGED IN USER ---
               <div className="relative inline-block text-left">
                 <button 
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -114,7 +107,7 @@ export function Header({ onMenuClick, onNavigate }: HeaderProps) {
                   <ChevronDown className={`w-4 h-4 text-white transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
 
-                {/* Dropdown Menu */}
+                {/* --- DROPDOWN MENU --- */}
                 {isUserMenuOpen && (
                   <>
                     <div 
@@ -123,47 +116,50 @@ export function Header({ onMenuClick, onNavigate }: HeaderProps) {
                     ></div>
                     
                     <div 
-                      className="absolute mt-2 bg-white rounded-lg shadow-2xl z-50 border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right"
+                      className="absolute mt-2 rounded-lg shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right"
                       style={{ 
                         right: 0, 
                         width: 'max-content', 
-                        padding: '20px' 
+                        minWidth: '220px',
+                        padding: '8px', // Reduced padding for cleaner look
+                        backgroundColor: '#0f172a', // Dark Navy (matches Sidebar)
+                        border: '1px solid #334155' // Slate 700 border for definition
                       }}
                     >
-                      <div className="mb-4 border-b border-gray-100 pb-4">
-                        {/* UPDATED: Added 'capitalize' class here.
-                            This will make 'juan dela cruz' -> 'Juan Dela Cruz' 
-                        */}
-                        <p className="text-base font-bold text-gray-900 leading-tight whitespace-nowrap capitalize">
+                      {/* USER INFO HEADER */}
+                      <div className="px-3 py-3 mb-2 border-b border-slate-700">
+                        <p className="text-base font-bold text-white leading-tight whitespace-nowrap capitalize">
                           {user.firstName} {user.lastName}
                         </p>
-                        
-                        {/* UPDATED: Removed 'uppercase', added 'capitalize'.
-                            This will make 'admin' -> 'Admin' 
-                        */}
-                        <p className="text-xs text-sky-600 font-bold capitalize tracking-wider mt-1">
+                        <p className="text-xs text-sky-400 font-bold capitalize tracking-wider mt-1">
                           {user.role}
                         </p>
                       </div>
 
                       <div className="flex flex-col gap-1">
+                        
+                        {/* PROFILE SETTINGS */}
                         <button 
                           onClick={() => handleNavClick('profile')}
-                          className="flex items-center gap-3 w-full px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors group"
+                          // HOVER: Background becomes Slate-800, Text White, Icon Sky Blue
+                          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-medium text-slate-300 rounded-md transition-all duration-200 group hover:bg-slate-800 hover:text-white"
                           type="button"
                         >
-                          <Settings className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-                          <span className="text-gray-700">Profile Settings</span>
+                          <Settings className="w-5 h-5 text-slate-400 transition-colors group-hover:text-sky-400" />
+                          <span>Profile Settings</span>
                         </button>
 
-                        <div className="my-1 border-t border-gray-100"></div>
+                        {/* VISIBLE DIVIDER LINE */}
+                        <div className="my-1 h-px bg-slate-700 w-full" />
 
+                        {/* LOGOUT BUTTON */}
                         <button 
                           onClick={handleLogout}
-                          className="flex items-center gap-3 w-full px-3 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                          // HOVER: Background Red tint, Text Red-300
+                          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-bold text-red-400 rounded-md transition-all duration-200 hover:bg-red-500/10 hover:text-red-300 group"
                           type="button"
                         >
-                          <LogOut className="w-5 h-5" />
+                          <LogOut className="w-5 h-5 transition-colors group-hover:text-red-300" />
                           <span>Logout</span>
                         </button>
                       </div>
@@ -172,7 +168,6 @@ export function Header({ onMenuClick, onNavigate }: HeaderProps) {
                 )}
               </div>
             ) : (
-              // --- GUEST VIEW (LOG IN / REGISTER) ---
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => onNavigate('login')} 
