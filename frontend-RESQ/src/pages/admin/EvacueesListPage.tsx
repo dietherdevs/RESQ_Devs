@@ -6,7 +6,6 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { Badge } from '../../components/ui/badge';
 import { toast } from 'sonner';
 
@@ -270,17 +269,17 @@ export function EvacueesListPage() {
   const totalBabies = filteredEvacuees.reduce((sum, e) => sum + e.babyCount, 0);
 
   return (
-    // Outer Container matching the SMS page (plus high pt to avoid navbar overlap)
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8 pt-28 md:pt-36">
+    // ✅ FIXED PADDING: Greatly increased top padding (pt-32) so the header clears the fixed navbar
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 pt-32 lg:pt-36">
       <div className="max-w-5xl mx-auto">
         
         {/* Header Block */}
-        <div className="mb-2 mt-8">
+        <div className="mb-6">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Evacuees List</h1>
           <p className="text-gray-600">Manage evacuee records and family information</p>
         </div>
 
-         {/* Statistics (Dynamic based on filter) */}
+         {/* Statistics */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <Card className="p-4 bg-blue-50 border-blue-200">
             <div className="text-2xl font-bold text-blue-600">{filteredEvacuees.length}</div>
@@ -306,7 +305,6 @@ export function EvacueesListPage() {
 
         {/* Toolbar: Filters & Actions */}
         <div className="flex flex-col lg:flex-row justify-between items-end lg:items-center gap-4 mb-6">
-          {/* Date Filter Card */}
           <Card className="p-2 px-3 w-full lg:w-auto flex flex-col sm:flex-row items-center gap-3 border-slate-200">
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <span className="text-xs font-bold text-gray-400 uppercase">From</span>
@@ -340,7 +338,6 @@ export function EvacueesListPage() {
             )}
           </Card>
 
-          {/* Action Buttons */}
           <div className="flex gap-2 w-full lg:w-auto">
             <Button onClick={exportToPDF} variant="outline" className="flex-1 lg:flex-none bg-white border-slate-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200">
               <FileDown className="w-4 h-4 mr-2" /> PDF
@@ -354,7 +351,7 @@ export function EvacueesListPage() {
           </div>
         </div>
 
-        {/* Evacuee Records Block (Mimics "Recent SMS History") */}
+        {/* Evacuee Records Block */}
         <Card className="p-6 border-slate-200">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Family Records</h2>
           
@@ -371,7 +368,6 @@ export function EvacueesListPage() {
               {filteredEvacuees.map((evacuee) => (
                 <div key={evacuee.id} className="p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-lg border border-slate-100">
                   <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                    
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="text-base font-semibold text-gray-800">{evacuee.headOfFamily}</div>
@@ -390,7 +386,6 @@ export function EvacueesListPage() {
                         <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> {evacuee.dateRegistered}</span>
                       </div>
                       
-                      {/* Family Vulnerabilities Badges */}
                       <div className="flex flex-wrap gap-2">
                         {evacuee.pwdCount > 0 && <Badge variant="outline" className="border-purple-200 text-purple-700 bg-purple-50">PWD: {evacuee.pwdCount}</Badge>}
                         {evacuee.seniorCount > 0 && <Badge variant="outline" className="border-orange-200 text-orange-700 bg-orange-50">Senior: {evacuee.seniorCount}</Badge>}
@@ -407,7 +402,6 @@ export function EvacueesListPage() {
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
-
                   </div>
                 </div>
               ))}
@@ -415,95 +409,119 @@ export function EvacueesListPage() {
           )}
         </Card>
 
-        {/* Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingEvacuee ? 'Edit Evacuee Record' : 'Add New Evacuee'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingEvacuee ? 'Update details.' : 'Enter details of the new evacuee family.'}
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label>Head of Family *</Label>
-                <Input
-                  value={formData.headOfFamily}
-                  onChange={(e) => setFormData({ ...formData, headOfFamily: e.target.value })}
-                  required
-                  placeholder="Last Name, First Name"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label>Phone Number *</Label>
-                <Input
-                  type="tel"
-                  value={formData.phoneNumber}
-                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                  required
-                  className="mt-1"
-                  placeholder="+639XXXXXXXXX"
-                />
-              </div>
-
-              <div>
-                <Label>Address *</Label>
-                <Select value={formData.address} onValueChange={(value) => setFormData({ ...formData, address: value })}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select street" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nangkaStreets.map((street) => (
-                      <SelectItem key={street} value={street}>{street}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Evacuation Center *</Label>
-                <Select value={formData.evacuationCenter} onValueChange={(value) => setFormData({ ...formData, evacuationCenter: value })}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select evacuation center" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {evacuationCenters.map((center) => (
-                      <SelectItem key={center.id} value={center.id}>{center.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+        {/* ✅ FIXED MODAL: Replaced broken dialog component with a raw, bulletproof Tailwind Modal */}
+        {isDialogOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            
+            {/* The Dark Overlay */}
+            <div 
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+              onClick={() => setIsDialogOpen(false)}
+            />
+            
+            {/* The White Modal Box */}
+            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              
+              {/* Modal Header */}
+              <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white shrink-0">
                 <div>
-                  <Label>Total Family Members *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={formData.totalMembers}
-                    onChange={(e) => setFormData({ ...formData, totalMembers: parseInt(e.target.value) || 1 })}
-                    required
-                    className="mt-1"
-                  />
+                  <h2 className="text-xl font-bold text-slate-800">
+                    {editingEvacuee ? 'Edit Evacuee Record' : 'Add New Evacuee'}
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {editingEvacuee ? 'Update details.' : 'Enter details of the new evacuee family.'}
+                  </p>
                 </div>
-                <div><Label>PWD</Label><Input type="number" min="0" value={formData.pwdCount} onChange={(e) => setFormData({ ...formData, pwdCount: parseInt(e.target.value) || 0 })} className="mt-1" /></div>
-                <div><Label>Seniors</Label><Input type="number" min="0" value={formData.seniorCount} onChange={(e) => setFormData({ ...formData, seniorCount: parseInt(e.target.value) || 0 })} className="mt-1" /></div>
-                <div><Label>Pregnant</Label><Input type="number" min="0" value={formData.pregnantCount} onChange={(e) => setFormData({ ...formData, pregnantCount: parseInt(e.target.value) || 0 })} className="mt-1" /></div>
-                <div><Label>Babies</Label><Input type="number" min="0" value={formData.babyCount} onChange={(e) => setFormData({ ...formData, babyCount: parseInt(e.target.value) || 0 })} className="mt-1" /></div>
+                <button 
+                  onClick={() => setIsDialogOpen(false)}
+                  className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">Add Evacuee</Button>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+              {/* Modal Content (Scrollable) */}
+              <div className="p-6 overflow-y-auto">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label>Head of Family *</Label>
+                    <Input
+                      value={formData.headOfFamily}
+                      onChange={(e) => setFormData({ ...formData, headOfFamily: e.target.value })}
+                      required
+                      placeholder="Last Name, First Name"
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Phone Number *</Label>
+                    <Input
+                      type="tel"
+                      value={formData.phoneNumber}
+                      onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                      required
+                      className="mt-1"
+                      placeholder="+639XXXXXXXXX"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Address *</Label>
+                    <Select value={formData.address} onValueChange={(value) => setFormData({ ...formData, address: value })}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select street" />
+                      </SelectTrigger>
+                      <SelectContent className="z-[110]">
+                        {nangkaStreets.map((street) => (
+                          <SelectItem key={street} value={street}>{street}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Evacuation Center *</Label>
+                    <Select value={formData.evacuationCenter} onValueChange={(value) => setFormData({ ...formData, evacuationCenter: value })}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select evacuation center" />
+                      </SelectTrigger>
+                      <SelectContent className="z-[110]">
+                        {evacuationCenters.map((center) => (
+                          <SelectItem key={center.id} value={center.id}>{center.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Total Family Members *</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={formData.totalMembers}
+                        onChange={(e) => setFormData({ ...formData, totalMembers: parseInt(e.target.value) || 1 })}
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                    <div><Label>PWD</Label><Input type="number" min="0" value={formData.pwdCount} onChange={(e) => setFormData({ ...formData, pwdCount: parseInt(e.target.value) || 0 })} className="mt-1" /></div>
+                    <div><Label>Seniors</Label><Input type="number" min="0" value={formData.seniorCount} onChange={(e) => setFormData({ ...formData, seniorCount: parseInt(e.target.value) || 0 })} className="mt-1" /></div>
+                    <div><Label>Pregnant</Label><Input type="number" min="0" value={formData.pregnantCount} onChange={(e) => setFormData({ ...formData, pregnantCount: parseInt(e.target.value) || 0 })} className="mt-1" /></div>
+                    <div><Label>Babies</Label><Input type="number" min="0" value={formData.babyCount} onChange={(e) => setFormData({ ...formData, babyCount: parseInt(e.target.value) || 0 })} className="mt-1" /></div>
+                  </div>
+
+                  <div className="flex gap-2 pt-6 border-t border-slate-100 mt-6">
+                    <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">Add Evacuee</Button>
+                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

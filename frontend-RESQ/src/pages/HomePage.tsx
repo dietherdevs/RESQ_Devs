@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios'; // Import Axios
+import axios from 'axios';
 import { AlertTriangle, Droplets, MapPin, Phone, Activity } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png';
-import nangka from '../assets/nangka.png';
+// Import the correct background image
 import nangka1 from '../assets/nangka1.png';
 import logos from '../assets/logos.png';
 
@@ -17,10 +16,7 @@ interface HomePageProps {
 
 export function HomePage({ onNavigate, onShowAuth, isLoggedIn }: HomePageProps) {
   const { t } = useLanguage();
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const heroImages = [nangka, nangka1];
 
-  // --- NEW: Real-time State ---
   const [floodData, setFloodData] = useState({
     level: 0,
     status: 'Loading...',
@@ -28,15 +24,12 @@ export function HomePage({ onNavigate, onShowAuth, isLoggedIn }: HomePageProps) 
     bgColor: 'bg-gray-100'
   });
 
-  // --- NEW: Fetch Data Effect ---
   useEffect(() => {
     const fetchFloodLevel = async () => {
       try {
-        // Calls your new Laravel Proxy
-        const response = await axios.get('http://localhost:8000/api/water-level/latest'); 
+        const response = await axios.get('/water-level/latest'); 
         const { level_meters, status } = response.data;
 
-        // Determine colors dynamically
         let color = 'text-green-500';
         let bgColor = 'bg-green-50';
 
@@ -57,21 +50,12 @@ export function HomePage({ onNavigate, onShowAuth, isLoggedIn }: HomePageProps) 
 
       } catch (error) {
         console.error("Failed to fetch PAGASA data");
-        // Optional: Set an error state or keep defaults
       }
     };
 
     fetchFloodLevel();
-    const interval = setInterval(fetchFloodLevel, 60000); // Updates every 1 min
+    const interval = setInterval(fetchFloodLevel, 60000); 
     return () => clearInterval(interval);
-  }, []);
-
-  // SlideShow Timer
-  useEffect(() => {
-    const timer = setInterval(() => {
-        setCurrentSlide((prev) => (prev + 1) % heroImages.length);
-    }, 5000);
-    return () => clearInterval(timer);
   }, []);
 
   const quickActions = [
@@ -84,41 +68,43 @@ export function HomePage({ onNavigate, onShowAuth, isLoggedIn }: HomePageProps) 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       
-      {/* Hero Section */}
-      <div className="relative text-white py-24 px-4 min-h-[600px] flex items-center justify-center overflow-hidden">
-        {heroImages.map((img, index) => (
-          <div key={index} className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}>
-            <img src={img} alt="Hero Background" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/50" />
+      {/* --- FIXED: HERO SECTION --- */}
+      <div className="relative text-white pt-8 pb-16 md:pt-16 md:pb-24 px-4 min-h-[300px] md:min-h-[400px] flex items-center justify-center overflow-hidden">
+        
+        {/* FIXED BACKGROUND */}
+        <div className="absolute inset-0">
+          <img src={nangka1} alt="Hero Background" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/60" />
+        </div>
+
+        <div className="relative z-10 max-w-4xl mx-auto text-center mt-2">
+          <div className="mb-4">
+            <img src={logos} alt="R.E.S.Q Logo" className="h-20 md:h-32 w-auto object-contain mx-auto drop-shadow-lg"/>
           </div>
-        ))}
-        <div className="relative z-10 max-w-4xl mx-auto text-center mt-8">
-          <div className="mb-2">
-            <img src={logos} alt="R.E.S.Q Logo" className="h-40 w-auto mx-auto drop-shadow-lg mt-8"/>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-md">{t('welcome')}</h1>
-          <p className="text-xl md:text-2xl mb-3 text-gray-100 drop-shadow-sm">{t('subtitle')}</p>
-          <p className="text-lg text-gray-200 mb-8 drop-shadow-sm">{t('description')}</p>
+          <h1 className="text-3xl md:text-5xl font-bold mb-2 drop-shadow-md">{t('welcome')}</h1>
+          <p className="text-lg md:text-2xl mb-2 text-gray-100 drop-shadow-sm">{t('subtitle')}</p>
+          <p className="text-sm md:text-lg text-gray-200 px-2 drop-shadow-sm">{t('description')}</p>
         </div>
       </div>
+      {/* --- END HERO SECTION --- */}
 
-      {/* --- UPDATED: Real-Time Flood Status Card --- */}
-      <div className="max-w-6xl mx-auto px-4 mt-6 relative z-20">
-        <Card className="p-6 shadow-xl border-2 border-blue-100">
+      {/* --- FIXED: FLOATING WATER LEVEL CARD --- */}
+      <div className="max-w-6xl mx-auto px-4 -mt-12 md:-mt-16 relative z-20">
+        <Card className="p-4 md:p-6 shadow-xl border-2 border-blue-100 bg-white">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`${floodData.bgColor} p-4 rounded-full`}>
-                <Droplets className={`w-8 h-8 ${floodData.color}`} />
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className={`${floodData.bgColor} p-3 md:p-4 rounded-full`}>
+                <Droplets className={`w-6 h-6 md:w-8 md:h-8 ${floodData.color}`} />
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-gray-800">{t('currentFloodLevel')}</h3>
-                <p className="text-2xl font-bold text-sky-500">{floodData.level} meters</p>
+                <h3 className="text-lg md:text-xl font-semibold text-gray-800">{t('currentFloodLevel')}</h3>
+                <p className="text-xl md:text-2xl font-bold text-sky-500">{floodData.level} meters</p>
                 <p className="text-xs text-gray-400">Source: PAGASA (Marikina Station)</p>
               </div>
             </div>
             <div className="text-center">
-              <div className={`inline-block px-6 py-3 rounded-full ${floodData.bgColor}`}>
-                <span className={`font-bold text-lg ${floodData.color}`}>
+              <div className={`inline-block px-5 py-2 md:px-6 md:py-3 rounded-full ${floodData.bgColor}`}>
+                <span className={`font-bold text-base md:text-lg ${floodData.color}`}>
                   {floodData.status}
                 </span>
               </div>
@@ -129,8 +115,9 @@ export function HomePage({ onNavigate, onShowAuth, isLoggedIn }: HomePageProps) 
           </div>
         </Card>
       </div>
+      {/* --- END FLOATING WATER LEVEL CARD --- */}
 
-      {/* Quick Actions & Banner remain unchanged... */}
+      {/* Rest of the page remains the same... */}
       <div className="max-w-6xl mx-auto px-4 py-12">
         <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">Quick Access</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

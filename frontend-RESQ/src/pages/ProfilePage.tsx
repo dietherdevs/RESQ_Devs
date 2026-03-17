@@ -3,12 +3,11 @@ import axios from 'axios';
 import { User, Home, Save, Phone, Camera, CheckCircle, Upload, X, Shield, Bell, MapPin, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Card } from '../components/ui/card';
-import { Switch } from '../components/ui/switch';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 
 export function ProfilePage() {
-  const { user } = useAuth(); 
+  const { user, updateUser } = useAuth(); 
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // STATE FOR IMAGE UPLOAD
@@ -34,7 +33,6 @@ export function ProfilePage() {
   // FETCH DATA
   useEffect(() => {
     fetchHouseholdData();
-    // Sync local state with User Context if available
     if (user?.sms_enabled !== undefined) {
         setSmsEnabled(user.sms_enabled);
     }
@@ -59,7 +57,6 @@ export function ProfilePage() {
             count_pwds: response.data.count_pwds || 0
         });
       }
-      // Also check if the backend returns the SMS status here
       if (response.data.sms_enabled !== undefined) {
           setSmsEnabled(response.data.sms_enabled);
       }
@@ -68,21 +65,20 @@ export function ProfilePage() {
     }
   };
 
-  // --- SMS TOGGLE HANDLER (CONNECTED TO BACKEND) ---
-  const handleSmsToggle = async (checked: boolean) => {
-    setSmsEnabled(checked); // Optimistic UI update
+  // --- SMS TOGGLE HANDLER ---
+  const handleSmsToggle = async () => {
+    const newValue = !smsEnabled;
+    setSmsEnabled(newValue); 
     setLoadingSms(true);
     
     try {
-        // ✅ UPDATED: Matches the Route we created in api.php
         await axios.post('/profile/toggle-sms', { 
-            sms_enabled: checked 
+            sms_enabled: newValue 
         });
-        
-        toast.success(checked ? "SMS Alerts Enabled" : "SMS Alerts Disabled");
+        toast.success(newValue ? "SMS Alerts Enabled" : "SMS Alerts Disabled");
     } catch (error) {
         console.error(error);
-        setSmsEnabled(!checked); // Revert on failure
+        setSmsEnabled(!newValue); 
         toast.error("Failed to update SMS settings");
     } finally {
         setLoadingSms(false);
@@ -106,6 +102,7 @@ export function ProfilePage() {
       if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
+  // ✅ INSTANT CACHE-BUSTING UPLOAD FIX
   const handleImageUpload = async () => {
     if (!selectedImage) return;
     setUploading(true);
@@ -113,12 +110,23 @@ export function ProfilePage() {
     imageFormData.append('image', selectedImage);
 
     try {
-      await axios.post('/profile/image', imageFormData, {
+      const response = await axios.post('/profile/image', imageFormData, {
           headers: { 'Content-Type': 'multipart/form-data' }
       });
+      
       toast.success("Profile picture updated!");
+      
+      // Updates the global context instantly with a unique timestamp to force the browser to load it
+      if (response.data && response.data.profile_url && updateUser) {
+          const newImageUrl = `${response.data.profile_url}?t=${new Date().getTime()}`;
+          updateUser({
+              ...user,
+              profile_image: newImageUrl
+          });
+      }
+
       handleCancelPreview();
-      window.location.reload(); 
+      
     } catch (error) {
       toast.error("Failed to upload image.");
     } finally {
@@ -140,7 +148,6 @@ export function ProfilePage() {
         let cleanPath = user.profile_image.replace('public/', '');
         if (!cleanPath.startsWith('/')) cleanPath = `/${cleanPath}`;
         if (!cleanPath.startsWith('/storage')) cleanPath = `/storage${cleanPath}`;
-        // Adjust this URL if you are using ngrok vs localhost
         return `${axios.defaults.baseURL?.replace('/api', '')}${cleanPath}`;
     }
     return null; 
@@ -246,8 +253,8 @@ export function ProfilePage() {
                 <Card 
                     className={`p-6 shadow-sm transition-all duration-300 ${
                         smsEnabled 
-                        ? 'bg-blue-50 border-l-4 border-blue-600' // ON STATE
-                        : 'bg-white border-l-4 border-slate-200'   // OFF STATE
+                        ? 'bg-blue-50 border-l-4 border-blue-600'
+                        : 'bg-white border-l-4 border-slate-200'
                     }`}
                 >
                     <div className="flex items-start justify-between">
@@ -265,12 +272,22 @@ export function ProfilePage() {
                             </div>
                         </div>
                         
-                        <Switch 
-                            checked={smsEnabled} 
-                            onCheckedChange={handleSmsToggle}
+                        <button 
+                            type="button"
+                            onClick={handleSmsToggle}
                             disabled={loadingSms}
-                            className={`data-[state=checked]:!bg-blue-600 ${smsEnabled ? '!bg-blue-600' : ''}`}
-                        />
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+                                smsEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                            }`}
+                        >
+                            <span className="sr-only">Toggle SMS Alerts</span>
+                            <span
+                                aria-hidden="true"
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                    smsEnabled ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                            />
+                        </button>
                     </div>
                 </Card>
 
