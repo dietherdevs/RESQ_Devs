@@ -20,7 +20,7 @@ ENV LOG_CHANNEL stderr
 ENV COMPOSER_ALLOW_SUPERUSER 1
 
 # 5. Force Composer to install dependencies RIGHT NOW during the build
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --ignore-platform-reqs --no-dev --optimize-autoloader
 
 # 6. Run our startup script
 CMD ["sh", "./start.sh"]
