@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Card } from '../components/ui/card';
-import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png';
+import logo from '../assets/resqlogo.png';
 
 export function AboutPage() {
   const { t } = useLanguage();
