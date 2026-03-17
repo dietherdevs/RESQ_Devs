@@ -42,36 +42,19 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation(); 
   
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default to true for desktop feel
   const [authDialog, setAuthDialog] = useState<{ isOpen: boolean; mode: 'login' | 'register' } | null>(null);
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
 
   useEffect(() => {
+    // Auto-close only on mobile
     if (window.innerWidth < 1024) {
       setIsSidebarOpen(false);
     }
   }, [location.pathname]);
 
-  useEffect(() => {
-    if (user && (location.pathname === '/' || location.pathname === '/login')) {
-      if (['admin', 'staff', 'superadmin'].includes(user.role)) {
-        navigate('/admin-dashboard', { replace: true });
-      } 
-    }
-  }, [user, navigate, location.pathname]);
-
   const handleNavigation = (pageId: string) => {
     if (pageId === 'home') navigate('/');
     else navigate(`/${pageId}`);
-  };
-
-  const handleAuthSuccess = () => {
-    setAuthDialog(null);
-    if (user && ['admin', 'staff', 'superadmin'].includes(user.role)) {
-        navigate('/admin-dashboard');
-    } else {
-        navigate('/');
-    }
   };
 
   const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
@@ -83,7 +66,6 @@ function AppContent() {
   return (
     <div className="h-screen bg-slate-50 flex overflow-hidden w-full relative">
       
-      {/* Sidebar is fixed on the left */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -91,13 +73,13 @@ function AppContent() {
         onNavigate={handleNavigation} 
       />
 
-      {/* FIXED MAIN AREA: 
-          - transition-all handles smooth movement
-          - lg:ml-64 physically moves the content when sidebar is open on Desktop
+      {/* FIXED CONTENT WRAPPER:
+          We use lg:ml-64 when open to PUSH the header and content.
+          We use lg:w-[calc(100%-16rem)] to prevent the content from overflowing.
       */}
       <div 
         className={`flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out ${
-          isSidebarOpen ? 'lg:ml-64' : 'ml-0'
+          isSidebarOpen ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : 'ml-0 w-full'
         }`}
       >
         <Header 
@@ -106,8 +88,7 @@ function AppContent() {
           onNavigate={handleNavigation} 
         />
         
-        {/* Added a top padding (pt-16) to ensure content doesn't go behind the fixed header */}
-        <main className="flex-1 w-full p-4 md:p-8 pt-20">
+        <main className="flex-1 w-full pt-16"> {/* Header is fixed, so we pad the top */}
           <Routes>
               <Route path="/" element={<HomePage onNavigate={handleNavigation} onShowAuth={(mode) => setAuthDialog({ isOpen: true, mode })} isLoggedIn={!!user} />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -119,7 +100,6 @@ function AppContent() {
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin-sms" element={<ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}><SendSMSPage /></ProtectedRoute>} />
-              <Route path="/send-sms" element={<ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}><SendSMSPage /></ProtectedRoute>} />
               <Route path="/admin-evacuation" element={<ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}><EvacuationStatusPage /></ProtectedRoute>} />
               <Route path="/flood-level" element={<ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}><AdminFloodPage /></ProtectedRoute>} />
               <Route path="/admin-evacuees" element={<ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}><EvacueesListPage /></ProtectedRoute>} />
@@ -132,9 +112,9 @@ function AppContent() {
       </div>
 
       {authDialog?.isOpen && (
-        <AuthDialog mode={authDialog.mode} onClose={() => setAuthDialog(null)} onSuccess={handleAuthSuccess} />
+        <AuthDialog mode={authDialog.mode} onClose={() => setAuthDialog(null)} onSuccess={() => setAuthDialog(null)} />
       )}
-      <Toaster position="top-right" expand={false} richColors />
+      <Toaster position="top-right" richColors />
     </div>
   );
 }

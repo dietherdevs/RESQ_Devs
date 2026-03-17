@@ -10,9 +10,10 @@ interface HeaderProps {
   onMenuClick: () => void;
   onLogoClick: () => void; 
   onNavigate: (page: string) => void;
+  isSidebarOpen?: boolean; // Added to help with dynamic width
 }
 
-export function Header({ onMenuClick, onNavigate }: HeaderProps) {
+export function Header({ onMenuClick, onNavigate, isSidebarOpen }: HeaderProps) {
   const { language, setLanguage } = useLanguage();
   const { user, logout } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -50,12 +51,16 @@ export function Header({ onMenuClick, onNavigate }: HeaderProps) {
   const avatarUrl = getAvatarUrl();
 
   return (
-    <header className="bg-sky-500 text-white shadow-md fixed top-0 left-0 w-full z-50">
+    // FIX: Added dynamic margin and width to match the App.tsx push logic
+    <header 
+      className={`bg-sky-500 text-white shadow-md fixed top-0 right-0 z-50 transition-all duration-300 ease-in-out ${
+        isSidebarOpen ? 'lg:left-64' : 'left-0'
+      }`}
+    >
       <div className="flex items-center justify-between px-2 sm:px-4 py-2 w-full max-w-7xl mx-auto">
         
         {/* --- LEFT SECTION --- */}
         <div className="flex items-center gap-1 sm:gap-3">
-          {/* 👈 FIX: Hide Menu Button on Desktop since Sidebar is fixed */}
           <button 
             onClick={onMenuClick} 
             className="p-1.5 sm:p-2 hover:bg-sky-600 rounded-lg transition-colors lg:hidden" 
@@ -79,7 +84,6 @@ export function Header({ onMenuClick, onNavigate }: HeaderProps) {
 
         {/* --- RIGHT SECTION --- */}
         <div className="flex items-center gap-1.5 sm:gap-4">
-          
           <button
             onClick={() => onNavigate('hotlines')}
             className="flex items-center gap-1 sm:gap-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-2 sm:px-3 py-1.5 rounded-full shadow-sm transition-colors"
