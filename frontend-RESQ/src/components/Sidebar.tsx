@@ -2,7 +2,7 @@ import React from 'react';
 import { X, Home, Droplets, MapPin, Phone, Info, Activity, LayoutDashboard, MessageSquare, Users, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png';
+const logo = "https://ui-avatars.com/api/?name=RESQ&background=0ea5e9&color=fff";
 
 interface SidebarProps {
   isOpen: boolean;

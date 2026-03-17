@@ -5,8 +5,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 // Import the correct background image
-import nangka1 from '../assets/nangka1.png';
-import logos from '../assets/logos.png';
+const nangka1 = "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=800&auto=format&fit=crop"; // A temporary flood/rescue image
+const logos = "https://ui-avatars.com/api/?name=Logos&background=random";
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
