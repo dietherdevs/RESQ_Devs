@@ -2,9 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
 // --- AXIOS CONFIGURATION ---
-// Setting /api here ensures all calls like axios.post('/login') 
-// correctly point to http://127.0.0.1:8000/api/login
-axios.defaults.baseURL = 'http://127.0.0.1:8000/api'; 
+// Set to your live Render backend for Vercel deployment
+axios.defaults.baseURL = 'https://resq-backend-qo04.onrender.com/api'; 
 axios.defaults.headers.common['Accept'] = 'application/json';
 axios.defaults.withCredentials = false; 
 
@@ -22,6 +21,9 @@ export interface User {
   role: UserRole;
   email?: string;
   smsAlerts: boolean;
+  // --- ADDED MISSING PROPERTIES FOR PROFILE PAGE ---
+  profile_image?: string; 
+  sms_enabled?: boolean;
 }
 
 interface AuthContextType {
@@ -34,6 +36,8 @@ interface AuthContextType {
   adminLogin: (username: string, password: string) => Promise<boolean>;
   setToken: (token: string) => void; 
   setUser: (user: User | null) => void;
+  // --- ADDED MISSING FUNCTION ---
+  updateUser: (data: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,7 +53,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       phoneNumber: backendUser.phone_number || backendUser.phoneNumber,
       dateOfBirth: backendUser.birthdate || backendUser.dateOfBirth,
       role: backendUser.role || 'resident', 
-      smsAlerts: backendUser.smsAlerts ?? true
+      smsAlerts: backendUser.smsAlerts ?? true,
+      // Map new fields if they come from backend
+      sms_enabled: backendUser.sms_enabled ?? true,
+      profile_image: backendUser.profile_image || null
     };
   };
 
@@ -65,7 +72,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       try {
-        // Corrected path (baseURL handles the /api prefix)
         const response = await axios.get('/user');
         const userData = mapBackendToFrontend(response.data);
         setUser(userData);
@@ -148,6 +154,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
+  // --- IMPLEMENTED MISSING FUNCTION ---
+  const updateUser = (data: Partial<User>) => {
+    if (user) {
+      setUser({ ...user, ...data });
+    }
+  };
+
   const setToken = (token: string) => {
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -163,7 +176,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateProfile, 
         adminLogin,
         setToken,
-        setUser
+        setUser,
+        updateUser // 👈 Don't forget to provide it here
     }}>
       {children}
     </AuthContext.Provider>
