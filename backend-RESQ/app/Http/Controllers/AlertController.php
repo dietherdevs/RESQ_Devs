@@ -115,7 +115,7 @@ class AlertController extends Controller
     private function triggerPhilSms($recipient, $message)
     {
         // 🛑 YOUR TOKEN IS HERE 🛑
-        $token = '1293|gg0FXhGrDbvjC8e8z7c4GjLrGqDTu0AYU2wKzKRrb55c6e42'; 
+        $token = '1853|DybfzWkO6P4YuqdURvZavuyYmTBdXsZoaVcGRDli03f3b45e'; 
         
         try {
             Log::info("Attempting to send SMS to: " . $recipient);
