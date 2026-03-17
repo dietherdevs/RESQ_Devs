@@ -34,8 +34,9 @@ import { ManageAdminsPage } from './pages/admin/ManageAdminsPage';
 import { FloodLevelPage as AdminFloodPage } from './pages/admin/FloodLevelPage';
 
 // --- BACKEND CONNECTION SETUP ---
-axios.defaults.baseURL = 'http://127.0.0.1:8000/api';
+axios.defaults.baseURL = 'https://resq-backend-qo04.onrender.com/api';
 axios.defaults.headers.post['Content-Type'] = 'application/json';
+axios.defaults.headers.common['Accept'] = 'application/json';
 
 function AppContent() {
   const { user } = useAuth();
@@ -46,11 +47,18 @@ function AppContent() {
   const [authDialog, setAuthDialog] = useState<{ isOpen: boolean; mode: 'login' | 'register' } | null>(null);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
 
+  // Close sidebar automatically when navigating on mobile only
+  useEffect(() => {
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  }, [location.pathname]);
+
   // --- 🚀 AUTOMATIC REDIRECT WATCHER ---
   useEffect(() => {
     if (user && (location.pathname === '/' || location.pathname === '/login')) {
       if (['admin', 'staff', 'superadmin'].includes(user.role)) {
-        navigate('/admin-dashboard');
+        navigate('/admin-dashboard', { replace: true });
       } 
     }
   }, [user, navigate, location.pathname]);
@@ -58,7 +66,6 @@ function AppContent() {
   const getCurrentPageID = () => {
     const path = location.pathname;
     if (path === '/') return 'home';
-    if (path.startsWith('/admin')) return path.substring(1); 
     return path.substring(1); 
   };
 
@@ -68,17 +75,6 @@ function AppContent() {
     if (pageId === 'home') navigate('/');
     else navigate(`/${pageId}`);
   };
-
-  useEffect(() => {
-    if (location.pathname === '/login') {
-      setAuthDialog({ isOpen: true, mode: 'login' });
-      navigate('/', { replace: true });
-    }
-    if (location.pathname === '/register') {
-      setAuthDialog({ isOpen: true, mode: 'register' });
-      navigate('/', { replace: true });
-    }
-  }, [location.pathname, navigate]);
 
   const handleLogoClick = () => {
     if (user && ['admin', 'staff', 'superadmin'].includes(user.role)) {
@@ -97,11 +93,6 @@ function AppContent() {
     }
   };
 
-  const handleAdminLoginSuccess = () => {
-    setShowAdminLogin(false);
-    navigate('/admin-dashboard');
-  };
-
   const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
     if (!user) return <Navigate to="/" replace />;
     if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" replace />;
@@ -109,7 +100,6 @@ function AppContent() {
   };
 
   return (
-    // FIX 1: Root container locks height (h-screen) and hides window scroll (overflow-hidden)
     <div className="h-screen bg-slate-50 flex overflow-hidden w-full relative">
       
       <Sidebar
@@ -119,23 +109,23 @@ function AppContent() {
         onNavigate={handleNavigation} 
       />
 
-      {/* FIX 2: This wrapper becomes the scrollable area (h-full + overflow-y-auto) */}
+      {/* Main Content Area */}
+      {/* FIX: Added lg:ml-64 and lg:w-[calc(100%-16rem)] 
+          This forces the main content to shrink and move to the right when sidebar is open on desktop.
+      */}
       <div 
-        className={`flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out ${
-          isSidebarOpen ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : ''
+        className={`flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out w-full ${
+          isSidebarOpen ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : 'lg:ml-0'
         }`}
       >
-        {/* Header will stick to the top of THIS scrollable container */}
         <Header 
           onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} 
           onLogoClick={handleLogoClick} 
           onNavigate={handleNavigation} 
         />
         
-        {/* FIX 3: Removed huge padding (pt-28/32). Sticky header handles spacing now. */}
         <main className="flex-1 w-full p-4 md:p-8">
           <Routes>
-              {/* --- PUBLIC & RESIDENT HOME PAGE --- */}
               <Route path="/" element={
                   <HomePage 
                       onNavigate={handleNavigation} 
@@ -151,14 +141,12 @@ function AppContent() {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/status" element={<StatusPage />} />
 
-              {/* --- PROTECTED RESIDENT PAGES --- */}
               <Route path="/profile" element={
                   <ProtectedRoute>
                       <ProfilePage />
                   </ProtectedRoute>
               } />
               
-              {/* --- ADMIN PAGES --- */}
               <Route path="/admin-dashboard" element={
                   <ProtectedRoute allowedRoles={['staff', 'admin', 'superadmin']}>
                       <AdminDashboard />
@@ -205,10 +193,8 @@ function AppContent() {
         </main>
 
         <Footer />
-        
       </div>
 
-      {/* --- MODALS --- */}
       {authDialog?.isOpen && (
         <AuthDialog
           mode={authDialog.mode}
@@ -220,11 +206,14 @@ function AppContent() {
       {showAdminLogin && (
         <AdminLoginDialog
           onClose={() => setShowAdminLogin(false)}
-          onSuccess={handleAdminLoginSuccess}
+          onSuccess={() => {
+            setShowAdminLogin(false);
+            navigate('/admin-dashboard');
+          }}
         />
       )}
 
-      <Toaster position="top-right" />
+      <Toaster position="top-right" expand={false} richColors />
     </div>
   );
 }

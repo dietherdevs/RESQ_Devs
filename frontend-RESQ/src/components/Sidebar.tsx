@@ -3,6 +3,7 @@ import { X, Home, Droplets, MapPin, Phone, Info, Activity, LayoutDashboard, Mess
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png';
+
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -71,13 +72,18 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
       )}
 
       {/* Sidebar Container */}
+      {/* MODIFIED CLASSES: 
+          - lg:translate-x-0 ensures it is always visible on desktop.
+          - lg:shadow-none removes the heavy shadow when it's integrated into the desktop layout.
+      */}
       <div
         className={`fixed top-0 left-0 h-full text-white w-64 transform transition-transform duration-300 ease-in-out shadow-2xl 
           ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
-          lg:translate-x-0`} // 👈 This makes it always visible on desktop
+          lg:translate-x-0 lg:shadow-none`} 
         style={{ 
             zIndex: 101,
-            backgroundColor: '#0f172a' 
+            backgroundColor: '#0f172a',
+            borderRight: '1px solid rgba(255,255,255,0.05)'
         }} 
       >
         <div className="flex flex-col h-full">
@@ -92,7 +98,8 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
               />
               <span className="font-bold text-lg">R.E.S.Q</span>
             </div>
-            {/* Close button only shows on Mobile */}
+            
+            {/* 👈 FIX: Added lg:hidden so the X doesn't show on desktop */}
             <button 
                 onClick={onClose} 
                 className="p-1 rounded transition-colors lg:hidden" 
