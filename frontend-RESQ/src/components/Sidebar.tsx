@@ -2,7 +2,7 @@ import React from 'react';
 import { X, Home, Droplets, MapPin, Phone, Info, Activity, LayoutDashboard, MessageSquare, Users, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png';
+import logo from '../assets/resqlogo.png';
 
 interface SidebarProps {
   isOpen: boolean;

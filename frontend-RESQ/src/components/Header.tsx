@@ -4,7 +4,7 @@ import { Menu, LogOut, Settings, ChevronDown, Phone } from 'lucide-react';
 import { Switch } from './ui/switch';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png';
+import logo from '../assets/resqlogo.png';
 
 interface HeaderProps {
   onMenuClick: () => void;
