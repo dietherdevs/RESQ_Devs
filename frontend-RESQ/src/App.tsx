@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import axios from 'axios';
+import { Analytics } from '@vercel/analytics/react';
 
 // --- CONTEXT IMPORTS ---
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -118,6 +119,7 @@ export default function App() {
       <LanguageProvider>
         <Router>
             <AppContent />
+            <Analytics />
         </Router>
       </LanguageProvider>
     </AuthProvider>
