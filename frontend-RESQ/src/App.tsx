@@ -33,6 +33,7 @@ import { ManageUsersPage } from './pages/admin/ManageUsersPage';
 import { ManageAdminsPage } from './pages/admin/ManageAdminsPage';
 import { FloodLevelPage as AdminFloodPage } from './pages/admin/FloodLevelPage';
 
+// --- BACKEND CONNECTION SETUP ---
 axios.defaults.baseURL = 'https://resq-backend-qo04.onrender.com/api';
 axios.defaults.headers.post['Content-Type'] = 'application/json';
 axios.defaults.headers.common['Accept'] = 'application/json';
@@ -42,11 +43,10 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation(); 
   
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default to true for desktop feel
-  const [authDialog, setAuthDialog] = useState<{ isOpen: boolean; mode: 'login' | 'register' } | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  // Auto-close on mobile when navigating
   useEffect(() => {
-    // Auto-close only on mobile
     if (window.innerWidth < 1024) {
       setIsSidebarOpen(false);
     }
@@ -64,7 +64,8 @@ function AppContent() {
   };
 
   return (
-    <div className="h-screen bg-slate-50 flex overflow-hidden w-full relative">
+    // PARENT: Flex layout ensures Sidebar and Content sit side-by-side
+    <div className="h-screen bg-slate-50 flex w-full overflow-hidden relative">
       
       <Sidebar
         isOpen={isSidebarOpen}
@@ -73,24 +74,19 @@ function AppContent() {
         onNavigate={handleNavigation} 
       />
 
-      {/* FIXED CONTENT WRAPPER:
-          We use lg:ml-64 when open to PUSH the header and content.
-          We use lg:w-[calc(100%-16rem)] to prevent the content from overflowing.
-      */}
-      <div 
-        className={`flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out ${
-          isSidebarOpen ? 'lg:ml-64 lg:w-[calc(100%-16rem)]' : 'ml-0 w-full'
-        }`}
-      >
+      {/* MAIN WRAPPER: Takes up remaining space next to Sidebar */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         <Header 
           onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} 
           onLogoClick={() => navigate('/')} 
-          onNavigate={handleNavigation} 
+          onNavigate={handleNavigation}
+          isSidebarOpen={isSidebarOpen} 
         />
         
-        <main className="flex-1 w-full pt-16"> {/* Header is fixed, so we pad the top */}
+        {/* SCROLLABLE AREA: pt-16 ensures content starts below Header */}
+        <main className="flex-1 w-full overflow-y-auto p-4 md:p-8 pt-20">
           <Routes>
-              <Route path="/" element={<HomePage onNavigate={handleNavigation} onShowAuth={(mode) => setAuthDialog({ isOpen: true, mode })} isLoggedIn={!!user} />} />
+              <Route path="/" element={<HomePage onNavigate={handleNavigation} onShowAuth={() => {}} isLoggedIn={!!user} />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/flood" element={<FloodLevelPage />} />
               <Route path="/evacuation" element={<EvacuationPage />} />
@@ -107,13 +103,10 @@ function AppContent() {
               <Route path="/admin-admins" element={<ProtectedRoute allowedRoles={['superadmin']}><ManageAdminsPage /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <Footer />
         </main>
-        <Footer />
       </div>
 
-      {authDialog?.isOpen && (
-        <AuthDialog mode={authDialog.mode} onClose={() => setAuthDialog(null)} onSuccess={() => setAuthDialog(null)} />
-      )}
       <Toaster position="top-right" richColors />
     </div>
   );
