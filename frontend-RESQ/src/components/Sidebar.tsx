@@ -3,7 +3,6 @@ import { X, Home, Droplets, MapPin, Phone, Info, Activity, LayoutDashboard, Mess
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png';
-
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -62,7 +61,7 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
 
   return (
     <>
-      {/* Overlay: Mobile Only */}
+      {/* Overlay: Mobile Only (Hidden on Desktop) */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 lg:hidden"
@@ -73,12 +72,11 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
 
       {/* Sidebar Container */}
       <div
-        className={`fixed top-0 left-0 h-full text-white w-64 transform transition-transform duration-300 ease-in-out shadow-2xl ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 left-0 h-full text-white w-64 transform transition-transform duration-300 ease-in-out shadow-2xl 
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
+          lg:translate-x-0`} // 👈 This makes it always visible on desktop
         style={{ 
             zIndex: 101,
-            // 🛑 FORCE COLOR HERE: This bypasses Tailwind and forces Dark Navy Blue
             backgroundColor: '#0f172a' 
         }} 
       >
@@ -94,10 +92,11 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
               />
               <span className="font-bold text-lg">R.E.S.Q</span>
             </div>
+            {/* Close button only shows on Mobile */}
             <button 
                 onClick={onClose} 
-                className="p-1 rounded transition-colors"
-                style={{ backgroundColor: 'transparent' }} // Default
+                className="p-1 rounded transition-colors lg:hidden" 
+                style={{ backgroundColor: 'transparent' }}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
@@ -111,10 +110,9 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
               const Icon = page.icon;
               const isActive = currentPage === page.id;
               
-              // We define colors manually to ensure they work
               const activeStyle = {
-                  backgroundColor: '#1e293b', // Lighter navy for active
-                  borderLeft: '4px solid #fbbf24' // Yellow border
+                  backgroundColor: '#1e293b',
+                  borderLeft: '4px solid #fbbf24'
               };
               const inactiveStyle = {
                   backgroundColor: 'transparent',
@@ -129,7 +127,7 @@ export function Sidebar({ isOpen, onClose, currentPage, onNavigate }: SidebarPro
                   className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/10"
                 >
                   <Icon className="w-5 h-5" />
-                  <span>{page.label}</span>
+                  <span className="font-medium">{page.label}</span>
                 </button>
               );
             })}
