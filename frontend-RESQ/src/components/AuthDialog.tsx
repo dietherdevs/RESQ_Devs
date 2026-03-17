@@ -341,7 +341,7 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
             
             <div>
               <Label>{t('address')}</Label>
-              <Select onValueChange={(v) => setRegisterForm({...registerForm, address: v})}>
+              <Select onValueChange={(v: any) => setRegisterForm({...registerForm, address: v})}>
                 <SelectTrigger><SelectValue placeholder="Select street" /></SelectTrigger>
                 <SelectContent>{nangkaStreets.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
@@ -349,7 +349,7 @@ export function AuthDialog({ mode, onClose, onSuccess }: AuthDialogProps) {
             
             <div>
               <Label>{t('gender')}</Label>
-              <Select onValueChange={(v) => setRegisterForm({...registerForm, gender: v})}>
+              <Select onValueChange={(v: any) => setRegisterForm({...registerForm, gender: v})}>
                 <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Male">{t('male')}</SelectItem>

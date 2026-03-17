@@ -4,7 +4,7 @@ import { Menu, LogOut, Settings, ChevronDown, Phone } from 'lucide-react';
 import { Switch } from './ui/switch';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import logo from 'figma:asset/4b574b690eba4a74e73324033005afce9cdefd16.png'; 
+const logo = "https://ui-avatars.com/api/?name=RESQ&background=0ea5e9&color=fff";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -96,7 +96,7 @@ export function Header({ onMenuClick, onNavigate, isSidebarOpen }: HeaderProps) 
             <span className="text-[10px] sm:text-xs font-bold">EN</span>
             <Switch
               checked={language === 'tl'}
-              onCheckedChange={(checked) => setLanguage(checked ? 'tl' : 'en')}
+              onCheckedChange={(checked: boolean) => setLanguage(checked ? 'tl' : 'en')}
               className="scale-50 sm:scale-75 data-[state=checked]:bg-yellow-400 origin-center -mx-1 sm:mx-0"
             />
             <span className="text-[10px] sm:text-xs font-bold">TL</span>
