@@ -33,7 +33,7 @@ export function HomePage({ onNavigate, onShowAuth, isLoggedIn }: HomePageProps) 
     const fetchFloodLevel = async () => {
       try {
         // Calls your new Laravel Proxy
-        const response = await axios.get('http://localhost:8000/api/water-level/latest'); 
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/water-level/latest`); //('http://localhost:8000/api/water-level/latest'); 
         const { level_meters, status } = response.data;
 
         // Determine colors dynamically
