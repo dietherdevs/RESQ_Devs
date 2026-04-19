@@ -34,10 +34,13 @@ export function Header({ onMenuClick, onNavigate }: HeaderProps) {
     }
   };
 
-  const avatarUrl = user?.profile_image 
-    ? `http://localhost:8000${user.profile_image}` 
-    : `https://ui-avatars.com/api/?name=${user?.firstName}+${user?.lastName}&background=ffffff&color=0ea5e9&size=64&bold=true`;
-
+  // const avatarUrl = user?.profile_image 
+  //   ? `http://localhost:8000${user.profile_image}` 
+  //   : `https://ui-avatars.com/api/?name=${user?.firstName}+${user?.lastName}&background=ffffff&color=0ea5e9&size=64&bold=true`;
+  const avatarUrl = user?.profile_image
+      ? `${import.meta.env.VITE_API_URL?.replace('/api', '')}${user.profile_image}`
+      : `https://ui-avatars.com/api/?name=${user?.firstName}+${user?.lastName}&background=ffffff&color=0ea5e9&size=64&bold=true`;
+  
   return (
     <>
       <header className="bg-sky-500 text-white shadow-md fixed top-0 left-0 w-full z-50">
