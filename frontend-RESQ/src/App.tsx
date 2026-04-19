@@ -34,7 +34,8 @@ import { ManageAdminsPage } from './pages/admin/ManageAdminsPage';
 import { FloodLevelPage as AdminFloodPage } from './pages/admin/FloodLevelPage';
 
 // --- BACKEND CONNECTION SETUP ---
-axios.defaults.baseURL = 'http://127.0.0.1:8000/api';
+//axios.defaults.baseURL = 'http://127.0.0.1:8000/api';
+axios.defaults.baseURL = 'https://resqdevs-production.up.railway.app/api';
 axios.defaults.headers.post['Content-Type'] = 'application/json';
 
 function AppContent() {
