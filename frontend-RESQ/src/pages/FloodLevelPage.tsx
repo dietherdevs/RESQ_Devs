@@ -18,7 +18,7 @@ export function FloodLevelPage() {
   // --- Fetch Data Logic ---
   const fetchData = async () => {
     try {
-      const response = await axios.(`${import.meta.env.VITE_API_URL}/water-level/latest`); //get('http://localhost:8000/api/water-level/latest');
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/water-level/latest`); //get('http://localhost:8000/api/water-level/latest');
       setData(response.data);
     } catch (error) {
       console.error("Failed to load flood data", error);
