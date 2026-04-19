@@ -4,7 +4,7 @@ import axios from 'axios';
 // --- AXIOS CONFIGURATION ---
 // Setting /api here ensures all calls like axios.post('/login') 
 // correctly point to http://127.0.0.1:8000/api/login
-axios.defaults.baseURL = 'https://resqdevs-production.up.railway.app/api'; //'http://127.0.0.1:8000/api'
+axios.defaults.baseURL = 'https://resqdevs-production.up.railway.app/api/login'; 
 axios.defaults.headers.common['Accept'] = 'application/json';
 axios.defaults.withCredentials = false; 
 
