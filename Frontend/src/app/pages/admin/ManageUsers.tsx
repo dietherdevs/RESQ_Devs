@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Added useEffect
 import {
   UserCog, CheckCircle, XCircle, Clock, Eye, Search, X,
   ChevronDown, User, Phone, MapPin, Calendar, Image, ShieldOff,
 } from 'lucide-react';
-import { RegisteredUser, registeredUsers as initial } from '../../data/mockData';
+import { RegisteredUser } from '../../data/mockData'; 
 import { useApp } from '../../context/AppContext';
 
 const NAVY = '#0D1B2A';
@@ -23,7 +23,9 @@ export function ManageUsers() {
   const { user: currentUser } = useApp();
   const isStaff = currentUser?.role === 'staff';
 
-  const [users, setUsers] = useState<RegisteredUser[]>(initial);
+  const [users, setUsers] = useState<RegisteredUser[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [viewId, setViewId] = useState<RegisteredUser | null>(null);
@@ -31,6 +33,48 @@ export function ManageUsers() {
   const [rejectReason, setRejectReason] = useState('');
   const [rejectCustom, setRejectCustom] = useState('');
   const [approving, setApproving] = useState<number | null>(null);
+
+  // ─── UPDATED: Fetch ALL users from Laravel for the History Tabs ────────────
+  const fetchAllUsers = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+      
+      const response = await fetch(`${apiUrl}/admin/users/all`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Map Laravel User model to your RegisteredUser interface
+        const mapped = data.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          phone: u.phone || 'N/A',
+          address: u.address || 'N/A',
+          registeredAt: new Date(u.created_at).toLocaleDateString(),
+          status: u.status,
+          smsEnabled: u.status === 'approved',
+          idImage: u.id_image_path ? u.id_image_path.split('/').pop() : 'id-card.jpg',
+          idImageUrl: u.id_image_url 
+        }));
+        setUsers(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllUsers();
+  }, []);
 
   const filtered = users.filter(u => {
     const matchSearch =
@@ -50,21 +94,57 @@ export function ManageUsers() {
     rejected: users.filter(u => u.status === 'rejected').length,
   };
 
-  const handleApprove = (id: number) => {
+  const handleApprove = async (id: number) => {
     setApproving(id);
-    setTimeout(() => {
-      setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'approved', smsEnabled: true } : u));
+    try {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+      
+      const response = await fetch(`${apiUrl}/admin/users/${id}/approve`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'approved', smsEnabled: true } : u));
+      }
+    } catch (err) {
+      console.error("Approval failed:", err);
+    } finally {
       setApproving(null);
-    }, 1000);
+    }
   };
 
-  const handleReject = () => {
+  // ─── UPDATED: Reject Logic now updates status instead of removing user ─────
+  const handleReject = async () => {
     if (rejectTarget === null) return;
-    const reason = rejectReason === 'Other (specify below)' ? rejectCustom : rejectReason;
-    setUsers(prev => prev.map(u => u.id === rejectTarget ? { ...u, status: 'rejected', smsEnabled: false } : u));
-    setRejectTarget(null);
-    setRejectReason('');
-    setRejectCustom('');
+    
+    try {
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+      
+      const response = await fetch(`${apiUrl}/admin/users/${rejectTarget}/reject`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        // Move the user to the rejected tab instead of filtering them out
+        setUsers(prev => prev.map(u => u.id === rejectTarget ? { ...u, status: 'rejected', smsEnabled: false } : u));
+      }
+    } catch (err) {
+      console.error("Rejection failed:", err);
+    } finally {
+      setRejectTarget(null);
+      setRejectReason('');
+      setRejectCustom('');
+    }
   };
 
   const statusBadge = (status: RegisteredUser['status']) => {
@@ -226,10 +306,15 @@ export function ManageUsers() {
                 </div>
               </div>
 
-              {/* ID Image Mock */}
+              {/* ID Image Display */}
               <div className="mt-4 p-4 rounded-xl border border-dashed border-yellow-200 bg-yellow-50 flex items-center gap-3">
                 <div className="w-16 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FEF3C7' }}>
-                  <Image size={20} style={{ color: YELLOW }} />
+                  {/* Shows the physical image if available, else the icon */}
+                  {u.idImageUrl ? (
+                    <img src={u.idImageUrl} alt="ID" className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <Image size={20} style={{ color: YELLOW }} />
+                  )}
                 </div>
                 <div>
                   <p className="text-xs font-bold" style={{ color: '#92400E' }}>Uploaded ID: {u.idImage}</p>
@@ -373,14 +458,20 @@ export function ManageUsers() {
               <button onClick={() => setViewId(null)} className="text-gray-400"><X size={18} /></button>
             </div>
             <div className="p-6">
-              {/* Mock ID Preview */}
+              {/* ID Preview */}
               <div
-                className="w-full h-48 rounded-xl flex flex-col items-center justify-center border-2 border-dashed"
+                className="w-full h-48 rounded-xl flex flex-col items-center justify-center border-2 border-dashed overflow-hidden"
                 style={{ backgroundColor: '#F9FAFB', borderColor: 'rgba(0,0,0,0.1)' }}
               >
-                <Image size={40} className="text-gray-300 mb-2" />
-                <p className="text-sm text-gray-400 font-medium">{viewId.idImage}</p>
-                <p className="text-xs text-gray-300 mt-1">Government-issued photo ID</p>
+                {viewId.idImageUrl ? (
+                   <img src={viewId.idImageUrl} alt="ID Large" className="w-full h-full object-contain" />
+                ) : (
+                  <>
+                    <Image size={40} className="text-gray-300 mb-2" />
+                    <p className="text-sm text-gray-400 font-medium">{viewId.idImage}</p>
+                    <p className="text-xs text-gray-300 mt-1">Government-issued photo ID</p>
+                  </>
+                )}
               </div>
 
               <div className="mt-5 grid grid-cols-2 gap-3">
@@ -398,7 +489,7 @@ export function ManageUsers() {
                 </div>
               </div>
 
-              {viewId.status === 'pending' && (
+              {viewId.status === 'pending' && !isStaff && (
                 <div className="flex gap-3 mt-5">
                   <button onClick={() => { setViewId(null); handleApprove(viewId.id); }}
                     className="flex-1 py-3 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2"

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { X, Upload, ArrowLeft, CheckCircle } from 'lucide-react';
+import { X, Upload, ArrowLeft, CheckCircle, ShieldAlert } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import resqLogo from '../../../imports/resq111.png';
 
@@ -8,18 +8,69 @@ export function RegisterModal() {
   const [step, setStep] = useState(1);
   const [idFile, setIdFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  
   const [form, setForm] = useState({
     firstName: '', lastName: '', username: '', email: '', phone: '',
-    dob: '', address: '', gender: '',
+    dob: '', address: '', gender: '', password: ''
   });
+
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!showRegister) return null;
 
   const handleChange = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStep(2);
+    setError('');
+    
+    if (!idFile) {
+        setError('Please upload a valid government ID before submitting.');
+        return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+      
+      const formData = new FormData();
+      
+      formData.append('name', `${form.firstName} ${form.lastName}`.trim());
+      formData.append('email', form.email);
+      formData.append('password', form.password);
+      formData.append('phone', form.phone);
+      formData.append('dob', form.dob);
+      formData.append('gender', form.gender);
+      formData.append('address', form.address);
+      formData.append('id_image', idFile);
+
+      const response = await fetch(`${apiUrl}/register`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json'
+        },
+        body: formData 
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setStep(2);
+      } else {
+        const errorMessage = data.errors 
+          ? Object.values(data.errors).flat().join(', ') 
+          : data.message;
+          
+        setError(errorMessage || 'Registration failed. Check your inputs.');
+      }
+    } catch (err) {
+      setError('Unable to connect to the server. Is the backend running?');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (step === 2) {
@@ -40,7 +91,7 @@ export function RegisterModal() {
             <p className="text-white/40 text-xs mb-6">An admin will review your submitted ID and approve your registration. You will receive an SMS notification once approved.</p>
             <button
               onClick={() => { setShowRegister(false); setStep(1); setShowLogin(true); }}
-              className="w-full py-3 rounded-lg text-white font-bold text-sm"
+              className="w-full py-3 rounded-lg text-white font-bold text-sm hover:opacity-90 transition-all active:scale-[0.98]"
               style={{ background: 'linear-gradient(135deg, #FF6B2B, #e85a1a)' }}
             >
               Back to Login
@@ -70,6 +121,14 @@ export function RegisterModal() {
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          
+          {error && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/50 flex items-start gap-2">
+              <ShieldAlert size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-red-200">{error}</p>
+            </div>
+          )}
+
           {/* Name Row */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -93,13 +152,24 @@ export function RegisterModal() {
               style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} placeholder="mariasantos" />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">
-              Email <span className="normal-case font-normal text-white/30">(Optional)</span>
-            </label>
-            <input type="email" value={form.email} onChange={e => handleChange('email', e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
-              style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} placeholder="maria@example.com" />
+          {/* Email + Password Row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">
+                Email *
+              </label>
+              <input required type="email" value={form.email} onChange={e => handleChange('email', e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
+                style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} placeholder="maria@example.com" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">
+                Password *
+              </label>
+              <input required type="password" value={form.password} onChange={e => handleChange('password', e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
+                style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} placeholder="••••••••" minLength={8} />
+            </div>
           </div>
 
           <div>
@@ -134,7 +204,7 @@ export function RegisterModal() {
             <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Address *</label>
             <input required value={form.address} onChange={e => handleChange('address', e.target.value)}
               className="w-full px-3 py-2.5 rounded-lg text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
-              style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} placeholder="Barangay, Marikina City" />
+              style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} placeholder="Barangay Nangka, Marikina City" />
           </div>
 
           {/* ID Upload */}
@@ -169,10 +239,11 @@ export function RegisterModal() {
 
           <button
             type="submit"
-            className="w-full py-3 rounded-lg text-white font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] shadow-lg"
+            disabled={isLoading}
+            className={`w-full py-3 rounded-lg text-white font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] shadow-lg ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
             style={{ background: 'linear-gradient(135deg, #FF6B2B, #e85a1a)' }}
           >
-            Submit Registration
+            {isLoading ? 'Submitting...' : 'Submit Registration'}
           </button>
 
           <p className="text-center text-sm text-white/50">

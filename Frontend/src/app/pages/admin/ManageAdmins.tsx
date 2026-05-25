@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ShieldCheck, Plus, Pencil, Trash2, X, Save, Search,
   ShieldAlert, CheckCircle, XCircle, User, Phone, MapPin,
   Lock, Crown,
 } from 'lucide-react';
-import { AdminUser, adminUsers as initial } from '../../data/mockData';
+import { AdminUser } from '../../data/mockData'; 
 import { useApp } from '../../context/AppContext';
 
 const NAVY = '#0D1B2A';
@@ -28,16 +28,47 @@ const barangays = [
   'Kalumpang', 'Malanday', 'Marikina Heights', 'Sta. Elena',
 ];
 
+const getToken = () => localStorage.getItem('auth_token') || localStorage.getItem('token') || '';
+
 export function ManageAdmins() {
   const { user: currentUser } = useApp();
   const isSuperAdmin = currentUser?.role === 'superadmin';
 
-  const [admins, setAdmins] = useState<AdminUser[]>(initial);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  // Error and Success states for UI feedback
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      fetchAdmins();
+    }
+  }, [isSuperAdmin]);
+
+  const fetchAdmins = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+      const response = await fetch(`${apiUrl}/admin/manage-admins`, {
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAdmins(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch admins:', error);
+    }
+  };
 
   if (!isSuperAdmin) {
     return (
@@ -54,45 +85,120 @@ export function ManageAdmins() {
   }
 
   const filtered = admins.filter(a =>
-    a.name.toLowerCase().includes(search.toLowerCase()) ||
-    a.email.toLowerCase().includes(search.toLowerCase()) ||
-    a.barangay.toLowerCase().includes(search.toLowerCase())
+    a.name?.toLowerCase().includes(search.toLowerCase()) ||
+    a.email?.toLowerCase().includes(search.toLowerCase()) ||
+    a.barangay?.toLowerCase().includes(search.toLowerCase())
   );
 
   const openAdd = () => {
+    setError('');
     setForm(emptyForm);
     setEditId(null);
     setShowForm(true);
   };
 
   const openEdit = (a: AdminUser) => {
-    setForm({ name: a.name, email: a.email, phone: a.phone, barangay: a.barangay, role: a.role, active: a.active });
+    setError('');
+    setForm({ name: a.name, email: a.email, phone: a.phone || '', barangay: a.barangay || '', role: a.role as AdminRole, active: a.active });
     setEditId(a.id);
     setShowForm(true);
   };
 
-  const handleSave = () => {
-    if (!form.name.trim() || !form.email.trim()) return;
-    if (editId !== null) {
-      setAdmins(prev => prev.map(a => a.id === editId ? { ...a, ...form } : a));
-    } else {
-      const newId = Math.max(...admins.map(a => a.id)) + 1;
-      setAdmins(prev => [...prev, {
-        id: newId,
-        ...form,
-        createdAt: new Date().toISOString().split('T')[0],
-      }]);
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.email.trim()) {
+        setError("Name and Email are required.");
+        return;
     }
-    setShowForm(false);
+
+    setIsSaving(true);
+    setError('');
+    
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+      const url = editId !== null ? `${apiUrl}/admin/manage-admins/${editId}` : `${apiUrl}/admin/manage-admins`;
+      const method = editId !== null ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(form)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // If updating
+        if (editId !== null) {
+          setAdmins(prev => prev.map(a => a.id === editId ? data : a));
+          setSuccess('Admin updated successfully.');
+        } 
+        // If creating
+        else {
+          setAdmins(prev => [...prev, data.admin]);
+          setSuccess(data.message); // Shows the email sent message
+        }
+        
+        setShowForm(false);
+        setTimeout(() => setSuccess(''), 5000);
+      } else {
+        setError(data.message || 'Failed to save admin. Email might already exist.');
+      }
+    } catch (error) {
+      setError('Connection error. Please try again.');
+      console.error('Error saving admin:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setAdmins(prev => prev.filter(a => a.id !== id));
-    setDeleteConfirm(null);
+  const handleDelete = async (id: number) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+      const response = await fetch(`${apiUrl}/admin/manage-admins/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        setAdmins(prev => prev.filter(a => a.id !== id));
+        setDeleteConfirm(null);
+        setSuccess('Admin removed successfully.');
+        setTimeout(() => setSuccess(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error deleting admin:', error);
+    }
   };
 
-  const toggleActive = (id: number) => {
-    setAdmins(prev => prev.map(a => a.id === id ? { ...a, active: !a.active } : a));
+  const toggleActive = async (id: number) => {
+    const admin = admins.find(a => a.id === id);
+    if (!admin) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+      const response = await fetch(`${apiUrl}/admin/manage-admins/${id}/toggle-status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ active: !admin.active })
+      });
+
+      if (response.ok) {
+        setAdmins(prev => prev.map(a => a.id === id ? { ...a, active: !a.active } : a));
+      }
+    } catch (error) {
+      console.error('Error toggling status:', error);
+    }
   };
 
   const superAdminCount = admins.filter(a => a.role === 'superadmin').length;
@@ -123,6 +229,13 @@ export function ManageAdmins() {
           <Plus size={16} /> Add Admin
         </button>
       </div>
+
+      {success && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 border border-green-200 text-green-800">
+          <CheckCircle size={20} className="text-green-500" />
+          <p className="text-sm font-semibold">{success}</p>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
@@ -197,7 +310,7 @@ export function ManageAdmins() {
                         className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0"
                         style={{ background: a.role === 'superadmin' ? `linear-gradient(135deg, ${ORANGE}, #e85a1a)` : `linear-gradient(135deg, ${YELLOW}, #e0a000)` }}
                       >
-                        {a.name[0]}
+                        {a.name?.[0] || '?'}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -212,14 +325,14 @@ export function ManageAdmins() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-4 text-sm text-gray-600">{a.phone}</td>
+                  <td className="px-5 py-4 text-sm text-gray-600">{a.phone || 'N/A'}</td>
                   <td className="px-5 py-4">
                     <span className="flex items-center gap-1.5 text-sm text-gray-600">
                       <MapPin size={11} className="text-gray-400" />
-                      {a.barangay}
+                      {a.barangay || 'N/A'}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-sm text-gray-500">{a.createdAt}</td>
+                  <td className="px-5 py-4 text-sm text-gray-500">{a.createdAt || 'N/A'}</td>
                   <td className="px-5 py-4 text-center">
                     <span
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
@@ -280,7 +393,7 @@ export function ManageAdmins() {
                     className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                     style={{ background: a.role === 'superadmin' ? ORANGE : YELLOW }}
                   >
-                    {a.name[0]}
+                    {a.name?.[0] || '?'}
                   </div>
                   <div>
                     <p className="font-bold text-sm" style={{ color: NAVY }}>{a.name}</p>
@@ -311,7 +424,7 @@ export function ManageAdmins() {
                   {a.active ? 'Active' : 'Inactive'}
                 </span>
                 <span className="flex items-center gap-1 text-xs text-gray-400 px-2">
-                  <MapPin size={10} />{a.barangay}
+                  <MapPin size={10} />{a.barangay || 'N/A'}
                 </span>
               </div>
             </div>
@@ -346,6 +459,15 @@ export function ManageAdmins() {
             </div>
 
             <div className="px-6 py-5 space-y-4">
+              
+              {/* Form Level Error */}
+              {error && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-100 flex items-start gap-2 text-red-600">
+                  <ShieldAlert size={16} className="mt-0.5 flex-shrink-0" />
+                  <p className="text-xs font-medium">{error}</p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Full Name *</label>
                 <input
@@ -455,12 +577,14 @@ export function ManageAdmins() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={!form.name.trim() || !form.email.trim()}
+                disabled={isSaving || !form.name.trim() || !form.email.trim()}
                 className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
                 style={{ background: `linear-gradient(135deg, ${ORANGE}, #e85a1a)` }}
               >
-                <Save size={14} />
-                {editId !== null ? 'Save Changes' : 'Add Admin'}
+                {isSaving ? (
+                  <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                ) : <Save size={14} />}
+                {editId !== null ? 'Save Changes' : 'Send Invite'}
               </button>
             </div>
           </div>

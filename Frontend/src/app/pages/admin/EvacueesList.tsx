@@ -1,6 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Users, Plus, Pencil, Trash2, Search, X, Save, Accessibility, HeartPulse, Baby, UserCheck, Download, FileSpreadsheet, FileText, ChevronDown } from 'lucide-react';
-import { Evacuee, evacueesList as initial } from '../../data/mockData';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -9,11 +8,22 @@ const NAVY = '#0D1B2A';
 const ORANGE = '#FF6B2B';
 const YELLOW = '#FFB800';
 
+interface Evacuee {
+  id: number;
+  head: string;
+  phone: string;
+  address: string;
+  total: number;
+  pwd: number;
+  seniors: number;
+  pregnant: number;
+  babies: number;
+  center: string;
+}
+
 const emptyForm: Omit<Evacuee, 'id'> = {
   head: '', phone: '', address: '', total: 1, pwd: 0, seniors: 0, pregnant: 0, babies: 0, center: '',
 };
-
-const centers = ['Marikina Sports Center', 'Parang National HS', 'Nangka Covered Court', 'Concepcion Elem School', 'Tumana Multi-purpose Hall'];
 
 const tags = [
   { key: 'pwd' as const, label: 'PWD', icon: <Accessibility size={13} />, color: '#6366F1', bg: '#EEF2FF' },
@@ -23,19 +33,56 @@ const tags = [
 ];
 
 export function EvacueesList() {
-  const [evacuees, setEvacuees] = useState<Evacuee[]>(initial);
+  const [evacuees, setEvacuees] = useState<Evacuee[]>([]);
+  const [centersList, setCentersList] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<Omit<Evacuee, 'id'>>(emptyForm);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [showExport, setShowExport] = useState(false);
+  const [saving, setSaving] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchEvacuees();
+    fetchCentersList();
+  }, []);
+
+  const fetchEvacuees = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('http://localhost:8000/api/admin/evacuees', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setEvacuees(result.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch evacuees", error);
+    }
+  };
+
+  const fetchCentersList = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('http://localhost:8000/api/admin/evacuation-centers', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setCentersList(result.data.map((c: any) => c.name));
+      }
+    } catch (error) {
+      console.error("Failed to fetch centers list", error);
+    }
+  };
 
   const filtered = evacuees.filter(e =>
     e.head.toLowerCase().includes(search.toLowerCase()) ||
     e.address.toLowerCase().includes(search.toLowerCase()) ||
-    e.phone.includes(search)
+    (e.phone && e.phone.includes(search))
   );
 
   const totals = evacuees.reduce((acc, e) => ({
@@ -53,20 +100,50 @@ export function EvacueesList() {
     setShowForm(true);
   };
 
-  const handleSave = () => {
-    if (!form.head.trim()) return;
-    if (editId !== null) {
-      setEvacuees(prev => prev.map(e => e.id === editId ? { ...e, ...form } : e));
-    } else {
-      const newId = Math.max(...evacuees.map(e => e.id)) + 1;
-      setEvacuees(prev => [...prev, { id: newId, ...form }]);
+  const handleSave = async () => {
+    if (!form.head.trim() || !form.center.trim()) return;
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const url = editId 
+        ? `http://localhost:8000/api/admin/evacuees/${editId}` 
+        : 'http://localhost:8000/api/admin/evacuees';
+
+      const response = await fetch(url, {
+        method: editId ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(form)
+      });
+
+      if (response.ok) {
+        await fetchEvacuees();
+        setShowForm(false);
+      }
+    } catch (error) {
+      console.error("Save error", error);
+    } finally {
+      setSaving(false);
     }
-    setShowForm(false);
   };
 
-  const handleDelete = (id: number) => {
-    setEvacuees(prev => prev.filter(e => e.id !== id));
-    setDeleteConfirm(null);
+  const handleDelete = async (id: number) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`http://localhost:8000/api/admin/evacuees/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+      if (response.ok) {
+        setEvacuees(prev => prev.filter(e => e.id !== id));
+        setDeleteConfirm(null);
+      }
+    } catch (error) {
+      console.error("Delete error", error);
+    }
   };
 
   // ── Export to Excel ──────────────────────────────────────────────────────
@@ -84,7 +161,6 @@ export function EvacueesList() {
       'Infants/Babies': e.babies,
     }));
 
-    // Summary row
     data.push({
       '#': 0,
       'Head of Family': '── TOTALS ──',
@@ -113,7 +189,6 @@ export function EvacueesList() {
   const exportPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // Header
     doc.setFillColor(13, 27, 42);
     doc.rect(0, 0, 297, 22, 'F');
     doc.setTextColor(255, 107, 43);
@@ -126,7 +201,6 @@ export function EvacueesList() {
     doc.text('Marikina City Flood Evacuation — Evacuees List', 14, 17);
     doc.text(`Generated: ${new Date().toLocaleString('en-PH')}`, 220, 17);
 
-    // Summary strip
     doc.setFontSize(8);
     doc.setTextColor(80, 80, 80);
     doc.text(`Total Families: ${evacuees.length}   |   Total People: ${totals.people}   |   PWD: ${totals.pwd}   |   Seniors: ${totals.seniors}   |   Pregnant: ${totals.pregnant}   |   Babies: ${totals.babies}`, 14, 28);
@@ -137,7 +211,7 @@ export function EvacueesList() {
       body: evacuees.map((e, i) => [
         i + 1,
         e.head,
-        e.phone,
+        e.phone || '—',
         e.address,
         e.center,
         e.total,
@@ -406,11 +480,11 @@ export function EvacueesList() {
                   className="w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none" style={{ borderColor: 'rgba(0,0,0,0.1)', color: NAVY }} placeholder="Barangay, Marikina City" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Evacuation Center</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Evacuation Center *</label>
                 <select value={form.center} onChange={e => setForm(p => ({ ...p, center: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none" style={{ borderColor: 'rgba(0,0,0,0.1)', color: NAVY }}>
                   <option value="">Select center</option>
-                  {centers.map(c => <option key={c} value={c}>{c}</option>)}
+                  {centersList.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -431,8 +505,9 @@ export function EvacueesList() {
             </div>
             <div className="px-6 py-4 border-t flex gap-3">
               <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600">Cancel</button>
-              <button onClick={handleSave} className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2" style={{ background: `linear-gradient(135deg, ${ORANGE}, #e85a1a)` }}>
-                <Save size={14} /> Save Record
+              <button onClick={handleSave} disabled={saving || !form.center} className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: `linear-gradient(135deg, ${ORANGE}, #e85a1a)` }}>
+                {saving ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Save size={14} />} 
+                {saving ? 'Saving...' : 'Save Record'}
               </button>
             </div>
           </div>

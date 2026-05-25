@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Building2, Plus, Pencil, Save, X, CheckCircle, AlertTriangle, XCircle, MapPin, Phone, Trash2 } from 'lucide-react';
-import { EvacCenter, evacuationCenters as initialCenters } from '../../data/mockData';
 
 const NAVY = '#0D1B2A';
 const ORANGE = '#FF6B2B';
@@ -13,6 +12,16 @@ const statusConfig = {
   full: { label: 'Full', color: ORANGE, bg: '#FFEDD5', icon: <AlertTriangle size={14} /> },
   closed: { label: 'Closed', color: '#6B7280', bg: '#F3F4F6', icon: <XCircle size={14} /> },
 };
+
+interface EvacCenter {
+  id: number;
+  name: string;
+  location: string;
+  contact: string[];
+  capacity: number;
+  current: number;
+  status: Status;
+}
 
 interface EditForm {
   id: number | null;
@@ -27,11 +36,37 @@ interface EditForm {
 const empty: EditForm = { id: null, name: '', location: '', contact: '', capacity: 200, current: 0, status: 'open' };
 
 export function EvacuationStatus() {
-  const [centers, setCenters] = useState<EvacCenter[]>(initialCenters);
+  const [centers, setCenters] = useState<EvacCenter[]>([]);
   const [editId, setEditId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<EditForm>(empty);
   const [deleteTarget, setDeleteTarget] = useState<EvacCenter | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Fetch from Laravel
+  useEffect(() => {
+    fetchCenters();
+  }, []);
+
+  const fetchCenters = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('http://localhost:8000/api/admin/evacuation-centers', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+      if (response.ok) {
+        const result = await response.json();
+        // Convert Laravel contact string back to array for UI
+        const mapped = result.data.map((c: any) => ({
+          ...c,
+          contact: c.contact ? c.contact.split(',').map((s: string) => s.trim()) : []
+        }));
+        setCenters(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch centers", error);
+    }
+  };
 
   const handleEdit = (c: EvacCenter) => {
     setForm({ id: c.id, name: c.name, location: c.location, contact: c.contact.join(', '), capacity: c.capacity, current: c.current, status: c.status });
@@ -45,34 +80,99 @@ export function EvacuationStatus() {
     setShowForm(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) return;
-    if (editId !== null) {
-      setCenters(prev => prev.map(c => c.id === editId ? {
-        ...c, name: form.name, location: form.location,
-        contact: form.contact.split(',').map(s => s.trim()),
-        capacity: form.capacity, current: form.current, status: form.status,
-      } : c));
-    } else {
-      const newId = Math.max(...centers.map(c => c.id)) + 1;
-      setCenters(prev => [...prev, {
-        id: newId, name: form.name, location: form.location,
-        contact: form.contact.split(',').map(s => s.trim()),
-        capacity: form.capacity, current: form.current, status: form.status,
-      }]);
+    setSaving(true);
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      const url = editId 
+        ? `http://localhost:8000/api/admin/evacuation-centers/${editId}` 
+        : 'http://localhost:8000/api/admin/evacuation-centers';
+        
+      const response = await fetch(url, {
+        method: editId ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          name: form.name,
+          location: form.location,
+          contact: form.contact,
+          capacity: form.capacity,
+          current: form.current,
+          status: form.status
+        })
+      });
+
+      if (response.ok) {
+        await fetchCenters(); // Refresh list
+        setShowForm(false);
+        setEditId(null);
+      }
+    } catch (error) {
+      console.error("Save error", error);
+    } finally {
+      setSaving(false);
     }
-    setShowForm(false);
-    setEditId(null);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    setCenters(prev => prev.filter(c => c.id !== deleteTarget.id));
-    setDeleteTarget(null);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`http://localhost:8000/api/admin/evacuation-centers/${deleteTarget.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+      
+      if (response.ok) {
+        setCenters(prev => prev.filter(c => c.id !== deleteTarget.id));
+        setDeleteTarget(null);
+      }
+    } catch (error) {
+      console.error("Delete error", error);
+    }
   };
 
-  const handleStatusChange = (id: number, status: Status) => {
-    setCenters(prev => prev.map(c => c.id === id ? { ...c, status, current: status === 'closed' ? 0 : c.current } : c));
+  // Auto-save status changes directly to API
+  const handleStatusChange = async (id: number, status: Status) => {
+    const center = centers.find(c => c.id === id);
+    if (!center) return;
+    
+    const newCurrent = status === 'closed' ? 0 : center.current;
+    
+    // Optimistic UI update
+    setCenters(prev => prev.map(c => c.id === id ? { ...c, status, current: newCurrent } : c));
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      await fetch(`http://localhost:8000/api/admin/evacuation-centers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        body: JSON.stringify({ ...center, status, current: newCurrent, contact: center.contact.join(',') })
+      });
+    } catch (error) {
+      fetchCenters(); // Revert on fail
+    }
+  };
+
+  // Auto-save occupancy inline
+  const handleOccupancyBlur = async (id: number, newCurrent: number) => {
+    const center = centers.find(c => c.id === id);
+    if (!center) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      await fetch(`http://localhost:8000/api/admin/evacuation-centers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        body: JSON.stringify({ ...center, current: newCurrent, contact: center.contact.join(',') })
+      });
+    } catch (error) {
+      fetchCenters();
+    }
   };
 
   return (
@@ -168,6 +268,7 @@ export function EvacuationStatus() {
                     min={0}
                     max={center.capacity}
                     onChange={e => setCenters(prev => prev.map(c => c.id === center.id ? { ...c, current: Math.min(+e.target.value, c.capacity) } : c))}
+                    onBlur={e => handleOccupancyBlur(center.id, Math.min(+e.target.value, center.capacity))}
                     disabled={center.status === 'closed'}
                     className="w-full px-3 py-1.5 rounded-lg border text-sm font-semibold focus:outline-none disabled:opacity-40"
                     style={{ borderColor: 'rgba(0,0,0,0.1)', color: NAVY }}
@@ -265,8 +366,9 @@ export function EvacuationStatus() {
             </div>
             <div className="px-6 py-4 border-t flex gap-3">
               <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSave} className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg" style={{ background: `linear-gradient(135deg, ${ORANGE}, #e85a1a)` }}>
-                <Save size={14} /> Save Changes
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg disabled:opacity-50" style={{ background: `linear-gradient(135deg, ${ORANGE}, #e85a1a)` }}>
+                {saving ? <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Save size={14} />} 
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

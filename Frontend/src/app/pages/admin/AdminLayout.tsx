@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate, Navigate, useLocation } from 'react-route
 import {
   LayoutDashboard, MessageSquare, Building2, Users, Activity,
   UserCog, ShieldCheck, Menu, X, LogOut, ChevronRight, Bell, Phone,
+  History // <--- ADDED: History icon for the new menu item
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { LoginModal } from '../../components/modals/LoginModal';
@@ -15,9 +16,11 @@ const ORANGE = '#FF6B2B';
 const YELLOW = '#FFB800';
 const BLUE = '#3B82F6';
 
+// ADDED: The new SMS Logs path to your navigation array
 const navItems = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/send-sms', label: 'Send SMS Alert', icon: MessageSquare, accent: ORANGE },
+  { path: '/admin/sms-logs', label: 'Broadcast History', icon: History, accent: ORANGE }, // <--- NEW ITEM
   { path: '/admin/evacuation-status', label: 'Evacuation Status', icon: Building2 },
   { path: '/admin/evacuees', label: 'Evacuees List', icon: Users },
   { path: '/admin/flood-monitoring', label: 'Flood Monitoring', icon: Activity, accent: YELLOW },

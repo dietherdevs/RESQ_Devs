@@ -1,30 +1,98 @@
+import { useState, useEffect } from 'react';
 import { Activity, Users, Building2, MessageSquare, AlertTriangle, TrendingUp, Clock, Droplets } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { floodHistory, CURRENT_LEVEL, getAlertInfo, evacuationCenters, evacueesList } from '../../data/mockData';
+import { getAlertInfo } from '../../data/mockData'; // Kept ONLY the helper function, removed mock arrays
 import { useApp } from '../../context/AppContext';
 
 const NAVY = '#0D1B2A';
 const ORANGE = '#FF6B2B';
 const YELLOW = '#FFB800';
 
-const recentAlerts = [
-  { id: 1, msg: 'Flood level reached Alert Level 2 at Sto. Niño', time: '10:42 PM', type: 'warning' },
-  { id: 2, msg: 'SMS alert broadcast to 1,247 registered users', time: '10:30 PM', type: 'info' },
-  { id: 3, msg: 'Parang National HS reached full capacity (300/300)', time: '9:15 PM', type: 'danger' },
-  { id: 4, msg: 'New user registration pending approval (3 pending)', time: '8:50 PM', type: 'info' },
-  { id: 5, msg: 'Flood level update: 17.8m — Alert Level 2 maintained', time: '8:00 PM', type: 'warning' },
-];
+interface ActivityItem {
+  id: string;
+  msg: string;
+  time: string;
+  type: 'info' | 'warning' | 'danger';
+}
+
+interface CenterItem {
+  id: number;
+  name: string;
+  capacity: number;
+  current: number;
+  status: 'open' | 'closed' | 'full';
+}
+
+interface FloodItem {
+  time: string;
+  level: number;
+}
+
+interface DashboardStats {
+  water_level: number;
+  open_centers: number;
+  total_centers: number;
+  total_evacuees: number;
+  sms_sent_today: number;
+  recent_activity: ActivityItem[];
+  evacuation_centers: CenterItem[];
+  flood_history: FloodItem[];
+}
 
 export function DashboardHome() {
-  const { user } = useApp();
-  const alert = getAlertInfo(CURRENT_LEVEL);
-  const openCenters = evacuationCenters.filter(c => c.status === 'open').length;
-  const totalEvacuees = evacueesList.reduce((acc, e) => acc + e.total, 0);
+  const { user, currentWaterLevel } = useApp() as any; 
+  
+  const [statsData, setStatsData] = useState<DashboardStats>({
+    water_level: 0,
+    open_centers: 0,
+    total_centers: 0,
+    total_evacuees: 0,
+    sms_sent_today: 0,
+    recent_activity: [],
+    evacuation_centers: [],
+    flood_history: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardStats();
+    
+    // Optional: Refresh the dashboard every 30 seconds for live updates!
+    const interval = setInterval(fetchDashboardStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchDashboardStats = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      const response = await fetch('http://localhost:8000/api/admin/dashboard-stats', {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.status === 'success') {
+        setStatsData(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const activeWaterLevel = currentWaterLevel ?? statsData.water_level;
+  const alert = getAlertInfo(activeWaterLevel);
 
   const stats = [
     {
       label: 'Current Flood Level',
-      value: `${CURRENT_LEVEL}m`,
+      value: loading ? '...' : `${activeWaterLevel}m`,
       sub: alert.label,
       icon: <Droplets size={20} />,
       color: alert.color,
@@ -32,7 +100,7 @@ export function DashboardHome() {
     },
     {
       label: 'Open Evac Centers',
-      value: `${openCenters} / ${evacuationCenters.length}`,
+      value: loading ? '...' : `${statsData.open_centers} / ${statsData.total_centers}`,
       sub: 'Centers Operational',
       icon: <Building2 size={20} />,
       color: '#22C55E',
@@ -40,15 +108,15 @@ export function DashboardHome() {
     },
     {
       label: 'Total Evacuees',
-      value: totalEvacuees.toString(),
-      sub: `${evacueesList.length} family records`,
+      value: loading ? '...' : statsData.total_evacuees.toLocaleString(),
+      sub: 'Total Active Records',
       icon: <Users size={20} />,
       color: ORANGE,
       bg: '#FFEDD5',
     },
     {
       label: 'SMS Alerts Sent',
-      value: '1,247',
+      value: loading ? '...' : statsData.sms_sent_today.toLocaleString(),
       sub: 'Today\'s broadcasts',
       icon: <MessageSquare size={20} />,
       color: YELLOW,
@@ -65,7 +133,9 @@ export function DashboardHome() {
         </h1>
         <p className="text-gray-500 text-sm mt-1">
           Here's your emergency system overview for{' '}
-          <span className="font-semibold">April 30, 2025</span>
+          <span className="font-semibold">
+            {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          </span>
         </p>
       </div>
 
@@ -79,7 +149,7 @@ export function DashboardHome() {
         </div>
         <div className="flex-1">
           <p className="font-bold text-sm" style={{ color: alert.color }}>
-            Active Alert: {alert.label} — Marikina River at {CURRENT_LEVEL}m
+            Active Alert: {alert.label} — Marikina River at {activeWaterLevel}m
           </p>
           <p className="text-xs mt-0.5 text-gray-500">
             Water level is currently above Alert Level 1 threshold. Monitor closely and prepare for possible escalation.
@@ -122,7 +192,7 @@ export function DashboardHome() {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={floodHistory} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <AreaChart data={statsData.flood_history} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="adminFlood" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={ORANGE} stopOpacity={0.3} />
@@ -146,7 +216,7 @@ export function DashboardHome() {
         <div className="lg:col-span-4 bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <h3 className="font-bold text-base mb-4" style={{ color: NAVY }}>Recent Activity</h3>
           <div className="space-y-3">
-            {recentAlerts.map(a => (
+            {statsData.recent_activity.length > 0 ? statsData.recent_activity.map(a => (
               <div key={a.id} className="flex gap-3">
                 <div
                   className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
@@ -157,7 +227,9 @@ export function DashboardHome() {
                   <p className="text-[10px] text-gray-400 mt-0.5">{a.time}</p>
                 </div>
               </div>
-            ))}
+            )) : (
+              <p className="text-xs text-gray-400 text-center py-4">No recent activity found.</p>
+            )}
           </div>
         </div>
       </div>
@@ -166,7 +238,7 @@ export function DashboardHome() {
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
         <h3 className="font-bold text-base mb-4" style={{ color: NAVY }}>Evacuation Center Status</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {evacuationCenters.map(center => {
+          {statsData.evacuation_centers.length > 0 ? statsData.evacuation_centers.map(center => {
             const pct = center.status === 'closed' ? 0 : Math.round((center.current / center.capacity) * 100);
             const statusColor = center.status === 'open' ? '#22C55E' : center.status === 'full' ? ORANGE : '#9CA3AF';
             const barColor = pct >= 90 ? '#EF4444' : pct >= 70 ? ORANGE : '#22C55E';
@@ -184,14 +256,16 @@ export function DashboardHome() {
                 {center.status !== 'closed' && (
                   <div>
                     <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: barColor }} />
                     </div>
                     <p className="text-[10px] text-gray-400 mt-1">{center.current}/{center.capacity} ({pct}%)</p>
                   </div>
                 )}
               </div>
             );
-          })}
+          }) : (
+             <p className="text-xs text-gray-400 py-2">No evacuation centers registered yet.</p>
+          )}
         </div>
       </div>
     </div>

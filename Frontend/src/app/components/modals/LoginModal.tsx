@@ -1,19 +1,60 @@
 import { useState } from 'react';
-import { Eye, EyeOff, X, ShieldAlert, Zap } from 'lucide-react';
+import { Eye, EyeOff, X, ShieldAlert } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { UserRole } from '../../context/AppContext';
 import resqLogo from '../../../imports/resq111.png';
 
 export function LoginModal() {
-  const { showLogin, setShowLogin, setShowRegister, login } = useApp();
+  // <--- NEW: Destructured setShowForgotPassword
+  const { showLogin, setShowLogin, setShowRegister, setUser, setShowForgotPassword } = useApp();
   const [showPw, setShowPw] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!showLogin) return null;
 
-  const handleDemoLogin = (role: UserRole) => {
-    login(role);
+  const handleManualLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+      
+      const response = await fetch(`${apiUrl}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const userWithMappedRole = {
+            ...data.user,
+            role: data.user.role === 'super_admin' ? 'superadmin' : data.user.role
+        };
+
+        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('user', JSON.stringify(userWithMappedRole));
+
+        setUser(userWithMappedRole);
+        
+        setShowLogin(false);
+      } else {
+        setError(data.message || 'Login failed. Please check your credentials.');
+      }
+    } catch (err) {
+      setError('Unable to connect to the server. Is the backend running?');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -34,52 +75,16 @@ export function LoginModal() {
           </div>
         </div>
 
-        {/* Demo Login Buttons */}
-        <div className="px-6 py-4 border-b border-white/10">
-          <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#FFB800' }}>
-            <Zap size={12} className="inline mr-1" />
-            Demo Quick Access
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => handleDemoLogin('user')}
-              className="px-3 py-2 rounded-lg text-xs font-semibold text-white border border-white/20 hover:bg-white/10 transition-all text-center"
-            >
-              User
-            </button>
-            <button
-              onClick={() => handleDemoLogin('admin')}
-              className="px-3 py-2 rounded-lg text-xs font-semibold border transition-all text-center"
-              style={{ backgroundColor: '#FFB800', color: '#0D1B2A', borderColor: '#FFB800' }}
-            >
-              Admin
-            </button>
-            <button
-              onClick={() => handleDemoLogin('superadmin')}
-              className="px-3 py-2 rounded-lg text-xs font-semibold text-white border transition-all text-center"
-              style={{ backgroundColor: '#FF6B2B', borderColor: '#FF6B2B' }}
-            >
-              Super Admin
-            </button>
-            <button
-              onClick={() => handleDemoLogin('staff')}
-              className="px-3 py-2 rounded-lg text-xs font-semibold text-white border transition-all text-center"
-              style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6' }}
-            >
-              Staff
-            </button>
-          </div>
-        </div>
-
         {/* Form */}
         <div className="px-6 py-5">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex-1 h-px bg-white/10" />
-            <span className="text-white/30 text-xs">or sign in manually</span>
-            <div className="flex-1 h-px bg-white/10" />
-          </div>
+          <form onSubmit={handleManualLogin} className="space-y-4">
+            {error && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/50 flex items-start gap-2">
+                <ShieldAlert size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-red-200">{error}</p>
+              </div>
+            )}
 
-          <form onSubmit={(e) => { e.preventDefault(); login('user'); }} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">
                 Username / Email
@@ -91,6 +96,7 @@ export function LoginModal() {
                 placeholder="you@example.com"
                 className="w-full px-4 py-3 rounded-lg text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                required
               />
             </div>
             <div>
@@ -105,6 +111,7 @@ export function LoginModal() {
                   placeholder="••••••••"
                   className="w-full px-4 py-3 rounded-lg text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-orange-400 focus:outline-none transition-colors pr-12"
                   style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                  required
                 />
                 <button
                   type="button"
@@ -121,17 +128,24 @@ export function LoginModal() {
                 <input type="checkbox" className="accent-orange-500 w-3.5 h-3.5" />
                 <span className="text-xs text-white/50">Remember me</span>
               </label>
-              <button type="button" className="text-xs font-semibold hover:underline" style={{ color: '#FF6B2B' }}>
+              {/* <--- NEW: Changed type to button, added onClick event ---> */}
+              <button 
+                type="button" 
+                onClick={() => { setShowLogin(false); setShowForgotPassword(true); }}
+                className="text-xs font-semibold hover:underline" 
+                style={{ color: '#FF6B2B' }}
+              >
                 Forgot Password?
               </button>
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 rounded-lg text-white font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] shadow-lg"
+              disabled={isLoading}
+              className={`w-full py-3 rounded-lg text-white font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] shadow-lg ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
               style={{ background: 'linear-gradient(135deg, #FF6B2B, #e85a1a)' }}
             >
-              Sign In
+              {isLoading ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
 
@@ -147,7 +161,6 @@ export function LoginModal() {
           </p>
         </div>
 
-        {/* Security note */}
         <div className="px-6 pb-5">
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5">
             <ShieldAlert size={13} style={{ color: '#FFB800' }} />

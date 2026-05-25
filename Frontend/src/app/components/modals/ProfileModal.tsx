@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; 
 import {
   X, Bell, Clock, ShieldCheck, Eye, EyeOff,
   Pencil, Check, KeyRound, ChevronDown, ChevronUp,
@@ -18,10 +18,9 @@ function fieldClass(editing: boolean) {
 }
 
 export function ProfileModal() {
-  const { showProfile, setShowProfile, user, logout } = useApp();
+  const { showProfile, setShowProfile, user, logout, refreshUser } = useApp();
   const [smsEnabled, setSmsEnabled] = useState(user?.smsEnabled ?? false);
 
-  // Editable account detail state
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [fields, setFields] = useState({
@@ -32,13 +31,30 @@ export function ProfileModal() {
   });
   const [editDraft, setEditDraft] = useState({ ...fields });
 
-  // Change password state
   const [pwOpen, setPwOpen] = useState(false);
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [showPw, setShowPw] = useState({ current: false, next: false, confirm: false });
   const [pwError, setPwError] = useState('');
   const [pwSaved, setPwSaved] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
+
+  useEffect(() => {
+    if (showProfile) {
+      refreshUser();
+    }
+  }, [showProfile, refreshUser]);
+
+  useEffect(() => {
+    if (user) {
+      setSmsEnabled(user.smsEnabled);
+      setFields({
+        firstName: user.firstName ?? (user.name?.split(' ')[0] ?? ''),
+        lastName:  user.lastName  ?? (user.name?.split(' ').slice(1).join(' ') ?? ''),
+        phone:     user.phone     ?? '',
+        address:   user.address   ?? '',
+      });
+    }
+  }, [user]);
 
   if (!showProfile || !user) return null;
 
@@ -53,16 +69,64 @@ export function ProfileModal() {
   };
   const rc = roleColors[user.role] ?? roleColors.user;
 
-  const handleEditSave = () => {
-    setFields({ ...editDraft });
-    setEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  // ─── UPDATED: Saves Profile Edits to DB ─────────────────────────────
+  const handleEditSave = async () => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || '';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+      
+      const response = await fetch(`${apiUrl}/profile/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ...editDraft })
+      });
+
+      if (response.ok) {
+        setFields({ ...editDraft });
+        setEditing(false);
+        setSaved(true);
+        refreshUser(); // Re-sync context
+        setTimeout(() => setSaved(false), 2500);
+      }
+    } catch (e) {
+      console.error("Profile update failed", e);
+    }
   };
 
   const handleEditCancel = () => {
     setEditDraft({ ...fields });
     setEditing(false);
+  };
+
+  // ─── UPDATED: Saves SMS Toggle to DB ─────────────────────────────
+  const toggleSms = async () => {
+    const newValue = !smsEnabled;
+    setSmsEnabled(newValue); // Optimistic UI update
+
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || '';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+      
+      const response = await fetch(`${apiUrl}/profile/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ smsEnabled: newValue })
+      });
+
+      if (!response.ok) throw new Error("Failed to toggle");
+      refreshUser();
+    } catch (e) {
+      setSmsEnabled(!newValue); // Revert on failure
+      console.error("SMS Toggle failed", e);
+    }
   };
 
   const handlePwChange = (k: keyof typeof pwForm, v: string) => {
@@ -390,7 +454,7 @@ export function ProfileModal() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => setSmsEnabled(!smsEnabled)}
+                    onClick={toggleSms}
                     className="relative w-12 h-6 rounded-full transition-all flex-shrink-0"
                     style={{ backgroundColor: smsEnabled ? '#22C55E' : 'rgba(255,255,255,0.2)' }}
                   >
