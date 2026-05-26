@@ -19,7 +19,12 @@ function fieldClass(editing: boolean) {
 
 export function ProfileModal() {
   const { showProfile, setShowProfile, user, logout, refreshUser } = useApp();
-  const [smsEnabled, setSmsEnabled] = useState(user?.smsEnabled ?? false);
+  
+  // EXACT 1:1 DB MAPPING
+  const [isApproved, setIsApproved] = useState(() => {
+    const initial = user?.is_approved ?? false;
+    return initial === true || initial === 1 || initial === "1";
+  });
 
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -46,7 +51,10 @@ export function ProfileModal() {
 
   useEffect(() => {
     if (user) {
-      setSmsEnabled(user.smsEnabled);
+      // EXACT 1:1 DB MAPPING
+      const current = user.is_approved ?? false;
+      setIsApproved(current === true || current === 1 || current === "1");
+      
       setFields({
         firstName: user.firstName ?? (user.name?.split(' ')[0] ?? ''),
         lastName:  user.lastName  ?? (user.name?.split(' ').slice(1).join(' ') ?? ''),
@@ -69,7 +77,6 @@ export function ProfileModal() {
   };
   const rc = roleColors[user.role] ?? roleColors.user;
 
-  // ─── UPDATED: Saves Profile Edits to DB ─────────────────────────────
   const handleEditSave = async () => {
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || '';
@@ -89,7 +96,7 @@ export function ProfileModal() {
         setFields({ ...editDraft });
         setEditing(false);
         setSaved(true);
-        refreshUser(); // Re-sync context
+        refreshUser(); 
         setTimeout(() => setSaved(false), 2500);
       }
     } catch (e) {
@@ -102,10 +109,9 @@ export function ProfileModal() {
     setEditing(false);
   };
 
-  // ─── UPDATED: Saves SMS Toggle to DB ─────────────────────────────
   const toggleSms = async () => {
-    const newValue = !smsEnabled;
-    setSmsEnabled(newValue); // Optimistic UI update
+    const newValue = !isApproved;
+    setIsApproved(newValue); // Optimistic UI update
 
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || '';
@@ -118,13 +124,16 @@ export function ProfileModal() {
           'Accept': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ smsEnabled: newValue })
+        // SENDING EXACT DB COLUMN NAME
+        body: JSON.stringify({ is_approved: newValue }) 
       });
 
-      if (!response.ok) throw new Error("Failed to toggle");
-      refreshUser();
+      if (!response.ok) throw new Error("Failed to sync toggle with database");
+      
+      await response.json(); 
+      refreshUser(); 
     } catch (e) {
-      setSmsEnabled(!newValue); // Revert on failure
+      setIsApproved(!newValue); 
       console.error("SMS Toggle failed", e);
     }
   };
@@ -170,18 +179,15 @@ export function ProfileModal() {
         className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
         style={{ backgroundColor: NAVY, border: '1px solid rgba(255,255,255,0.1)', maxHeight: '92vh', overflowY: 'auto' }}
       >
-        {/* ── Header ─────────────────────────────────────────── */}
         <div className="px-6 pt-6 pb-5 border-b border-white/10" style={{ background: 'linear-gradient(135deg, #0D1B2A, #132236)' }}>
           <button onClick={() => setShowProfile(false)} className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors">
             <X size={20} />
           </button>
 
-          {/* Logo */}
           <div className="mb-4">
             <img src={resqLogo} alt="RESQ" className="h-7 w-auto object-contain" />
           </div>
 
-          {/* Avatar + name */}
           <div className="flex items-center gap-4">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg flex-shrink-0"
@@ -219,7 +225,6 @@ export function ProfileModal() {
         </div>
 
         <div className="px-6 py-5 space-y-5">
-
           {/* ── Account Details ─────────────────────────────── */}
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -261,7 +266,6 @@ export function ProfileModal() {
             )}
 
             <div className="rounded-xl overflow-hidden border border-white/10 divide-y divide-white/5">
-              {/* First Name */}
               <div className="px-4 py-3">
                 <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">First Name</p>
                 {editing ? (
@@ -276,8 +280,6 @@ export function ProfileModal() {
                   <p className="text-sm text-white font-semibold">{fields.firstName || '—'}</p>
                 )}
               </div>
-
-              {/* Last Name */}
               <div className="px-4 py-3">
                 <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Last Name</p>
                 {editing ? (
@@ -292,22 +294,16 @@ export function ProfileModal() {
                   <p className="text-sm text-white font-semibold">{fields.lastName || '—'}</p>
                 )}
               </div>
-
-              {/* Username – read-only */}
               {user.username && (
                 <div className="px-4 py-3" style={{ backgroundColor: 'transparent' }}>
                   <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Username</p>
                   <p className="text-sm text-white/60 font-semibold">@{user.username}</p>
                 </div>
               )}
-
-              {/* Email – read-only */}
               <div className="px-4 py-3">
                 <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Email Address</p>
                 <p className="text-sm text-white/60 font-semibold">{user.email || '—'}</p>
               </div>
-
-              {/* Phone – editable */}
               <div className="px-4 py-3">
                 <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Phone Number</p>
                 {editing ? (
@@ -323,20 +319,14 @@ export function ProfileModal() {
                   <p className="text-sm text-white font-semibold">{fields.phone || '—'}</p>
                 )}
               </div>
-
-              {/* DOB – read-only */}
               <div className="px-4 py-3">
                 <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Date of Birth</p>
                 <p className="text-sm text-white/60 font-semibold">{formatDob(user.dob)}</p>
               </div>
-
-              {/* Gender – read-only */}
               <div className="px-4 py-3">
                 <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Gender</p>
                 <p className="text-sm text-white/60 font-semibold">{formatGender(user.gender)}</p>
               </div>
-
-              {/* Address – editable */}
               <div className="px-4 py-3">
                 <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Home Address</p>
                 {editing ? (
@@ -372,7 +362,6 @@ export function ProfileModal() {
 
             {pwOpen && (
               <div className="mt-2 rounded-xl border border-white/10 px-4 py-4 space-y-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                {/* Current password */}
                 {[
                   { key: 'current' as const, label: 'Current Password', placeholder: 'Enter current password' },
                   { key: 'next'    as const, label: 'New Password',      placeholder: 'At least 8 characters' },
@@ -400,10 +389,7 @@ export function ProfileModal() {
                   </div>
                 ))}
 
-                {pwError && (
-                  <p className="text-xs text-red-400 font-medium">{pwError}</p>
-                )}
-
+                {pwError && <p className="text-xs text-red-400 font-medium">{pwError}</p>}
                 {pwSaved && (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
                     <Check size={13} className="text-green-400" />
@@ -456,9 +442,9 @@ export function ProfileModal() {
                   <button
                     onClick={toggleSms}
                     className="relative w-12 h-6 rounded-full transition-all flex-shrink-0"
-                    style={{ backgroundColor: smsEnabled ? '#22C55E' : 'rgba(255,255,255,0.2)' }}
+                    style={{ backgroundColor: isApproved ? '#22C55E' : 'rgba(255,255,255,0.2)' }}
                   >
-                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${smsEnabled ? 'left-7' : 'left-1'}`} />
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${isApproved ? 'left-7' : 'left-1'}`} />
                   </button>
                 )}
               </div>
@@ -466,11 +452,11 @@ export function ProfileModal() {
               {!isNewUser && (
                 <div className="mt-3 pt-3 border-t border-white/10">
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${smsEnabled ? 'bg-green-400' : 'bg-white/20'}`} />
+                    <div className={`w-2 h-2 rounded-full ${isApproved ? 'bg-green-400' : 'bg-white/20'}`} />
                     <span className="text-xs text-white/50">
                       SMS Alerts are currently{' '}
-                      <span className={`font-semibold ${smsEnabled ? 'text-green-400' : 'text-white/70'}`}>
-                        {smsEnabled ? 'ENABLED' : 'DISABLED'}
+                      <span className={`font-semibold ${isApproved ? 'text-green-400' : 'text-white/70'}`}>
+                        {isApproved ? 'ENABLED' : 'DISABLED'}
                       </span>
                     </span>
                   </div>
@@ -479,7 +465,6 @@ export function ProfileModal() {
             </div>
           </div>
 
-          {/* ── Actions ─────────────────────────────────────── */}
           <div className="flex gap-3 pt-1">
             <button
               onClick={() => setShowProfile(false)}
@@ -498,4 +483,4 @@ export function ProfileModal() {
       </div>
     </div>
   );
-}
+} 

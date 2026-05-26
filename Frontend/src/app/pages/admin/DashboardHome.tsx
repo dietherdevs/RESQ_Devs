@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Activity, Users, Building2, MessageSquare, AlertTriangle, TrendingUp, Clock, Droplets } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getAlertInfo } from '../../data/mockData'; // Kept ONLY the helper function, removed mock arrays
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { getAlertInfo } from '../../data/mockData'; 
 import { useApp } from '../../context/AppContext';
 
 const NAVY = '#0D1B2A';
@@ -39,6 +39,25 @@ interface DashboardStats {
   flood_history: FloodItem[];
 }
 
+// ─── NEW: Cloned Custom Tooltip from Monitoring ───
+function ChartTooltip({ active, payload, label }: any) {
+  if (active && payload?.length) {
+    const val = payload[0].value as number;
+    const alert = getAlertInfo(val);
+    return (
+      <div
+        className="rounded-xl px-3 py-2 shadow-xl border"
+        style={{ backgroundColor: NAVY, borderColor: 'rgba(255,255,255,0.15)' }}
+      >
+        <p className="text-white/50 text-xs mb-1">{label}</p>
+        <p className="font-black text-base" style={{ color: alert.color }}>{val.toFixed(2)} m</p>
+        <p className="text-xs font-semibold mt-0.5" style={{ color: alert.color }}>{alert.label}</p>
+      </div>
+    );
+  }
+  return null;
+}
+
 export function DashboardHome() {
   const { user, currentWaterLevel } = useApp() as any; 
   
@@ -57,14 +76,14 @@ export function DashboardHome() {
   useEffect(() => {
     fetchDashboardStats();
     
-    // Optional: Refresh the dashboard every 30 seconds for live updates!
+    // Refresh the dashboard every 30 seconds for live updates
     const interval = setInterval(fetchDashboardStats, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchDashboardStats = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token') || '';
       if (!token) return;
 
       const response = await fetch('http://localhost:8000/api/admin/dashboard-stats', {
@@ -92,7 +111,7 @@ export function DashboardHome() {
   const stats = [
     {
       label: 'Current Flood Level',
-      value: loading ? '...' : `${activeWaterLevel}m`,
+      value: loading ? '...' : `${activeWaterLevel.toFixed(2)}m`,
       sub: alert.label,
       icon: <Droplets size={20} />,
       color: alert.color,
@@ -129,7 +148,7 @@ export function DashboardHome() {
       {/* Header */}
       <div>
         <h1 className="font-black text-2xl" style={{ color: NAVY }}>
-          Welcome back, {user?.name?.split(' ')[0]} 👋
+          Welcome back, {user?.name?.split(' ')[0] ?? 'Admin'} 👋
         </h1>
         <p className="text-gray-500 text-sm mt-1">
           Here's your emergency system overview for{' '}
@@ -149,10 +168,10 @@ export function DashboardHome() {
         </div>
         <div className="flex-1">
           <p className="font-bold text-sm" style={{ color: alert.color }}>
-            Active Alert: {alert.label} — Marikina River at {activeWaterLevel}m
+            Active Alert: {alert.label} — Marikina River at {activeWaterLevel.toFixed(2)}m
           </p>
           <p className="text-xs mt-0.5 text-gray-500">
-            Water level is currently above Alert Level 1 threshold. Monitor closely and prepare for possible escalation.
+            Water level is currently being monitored. Follow LGU protocols and prepare for updates.
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-xs font-semibold flex-shrink-0" style={{ color: alert.color }}>
@@ -191,23 +210,43 @@ export function DashboardHome() {
               <Activity size={11} /> Live Data
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={statsData.flood_history} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={250}>
+            <AreaChart data={statsData.flood_history} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
               <defs>
-                <linearGradient id="adminFlood" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={ORANGE} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={ORANGE} stopOpacity={0.02} />
+                <linearGradient id="adminFloodDashboard" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={alert.color} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={alert.color} stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
               <XAxis dataKey="time" tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis domain={[12, 22]} tick={{ fill: '#9CA3AF', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ backgroundColor: NAVY, border: 'none', borderRadius: 8, color: 'white' }}
-                labelStyle={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}
-                itemStyle={{ color: ORANGE, fontWeight: 700 }}
+              
+              {/* ─── FIX: Exact Dynamic Y-Axis from Monitoring ─── */}
+              <YAxis 
+                domain={['dataMin - 0.2', 'dataMax + 0.2']} 
+                tick={{ fill: '#9CA3AF', fontSize: 10 }} 
+                axisLine={false} 
+                tickLine={false} 
+                tickFormatter={v => `${v.toFixed(1)}m`} 
               />
-              <Area type="monotone" dataKey="level" stroke={ORANGE} strokeWidth={2} fill="url(#adminFlood)" dot={false} />
+              
+              <Tooltip content={<ChartTooltip />} />
+              
+              {/* ─── FIX: Added Reference Lines ─── */}
+              <ReferenceLine y={15} stroke={YELLOW} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: '15m', fill: YELLOW, fontSize: 10, position: 'right' }} />
+              <ReferenceLine y={16} stroke={ORANGE} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: '16m', fill: ORANGE, fontSize: 10, position: 'right' }} />
+              <ReferenceLine y={17} stroke="#EF4444" strokeDasharray="4 4" strokeWidth={1.5} label={{ value: '17m', fill: '#EF4444', fontSize: 10, position: 'right' }} />
+
+              {/* ─── FIX: Added dots & active dots, dynamic color ─── */}
+              <Area 
+                type="monotone" 
+                dataKey="level" 
+                stroke={alert.color} 
+                strokeWidth={2.5} 
+                fill="url(#adminFloodDashboard)" 
+                dot={{ r: 3, fill: 'white', stroke: alert.color, strokeWidth: 2 }}
+                activeDot={{ r: 5, fill: alert.color, stroke: 'white', strokeWidth: 2 }}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </div>
