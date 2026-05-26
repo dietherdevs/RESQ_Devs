@@ -74,7 +74,8 @@ export function FloodMonitoring() {
     if (!sensorOnline) return; 
 
     try {
-      const response = await fetch('http://localhost:8000/api/flood/history?t=' + Date.now());
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${apiUrl}/flood/history?t=${Date.now()}`);
       if (response.ok) {
         const result = await response.json();
         
@@ -126,8 +127,8 @@ export function FloodMonitoring() {
     
     try {
       const userToken = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token') || '';
-
-      const response = await fetch('http://localhost:8000/api/admin/flood/manual-override', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${apiUrl}/admin/flood/manual-override`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -164,7 +165,8 @@ export function FloodMonitoring() {
     setSaving(true);
     try {
       const userToken = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token') || '';
-      const response = await fetch('http://localhost:8000/api/admin/flood/reset-override', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${apiUrl}/admin/flood/reset-override`, {
         method: 'POST',
         headers: {
             'Accept': 'application/json',

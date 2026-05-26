@@ -51,7 +51,8 @@ export function EvacuationStatus() {
   const fetchCenters = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/admin/evacuation-centers', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${apiUrl}/admin/evacuation-centers`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
       if (response.ok) {
@@ -86,9 +87,10 @@ export function EvacuationStatus() {
     
     try {
       const token = localStorage.getItem('auth_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
       const url = editId 
-        ? `http://localhost:8000/api/admin/evacuation-centers/${editId}` 
-        : 'http://localhost:8000/api/admin/evacuation-centers';
+       ? `${apiUrl}/admin/evacuation-centers/${editId}` 
+       : `${apiUrl}/admin/evacuation-centers`;
         
       const response = await fetch(url, {
         method: editId ? 'PUT' : 'POST',
@@ -123,7 +125,8 @@ export function EvacuationStatus() {
     if (!deleteTarget) return;
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`http://localhost:8000/api/admin/evacuation-centers/${deleteTarget.id}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${apiUrl}/admin/evacuation-centers/${deleteTarget.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
@@ -149,7 +152,8 @@ export function EvacuationStatus() {
 
     try {
       const token = localStorage.getItem('auth_token');
-      await fetch(`http://localhost:8000/api/admin/evacuation-centers/${id}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      await fetch(`${apiUrl}/admin/evacuation-centers/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
         body: JSON.stringify({ ...center, status, current: newCurrent, contact: center.contact.join(',') })
@@ -165,7 +169,8 @@ export function EvacuationStatus() {
     if (!center) return;
     try {
       const token = localStorage.getItem('auth_token');
-      await fetch(`http://localhost:8000/api/admin/evacuation-centers/${id}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      await fetch(`${apiUrl}/admin/evacuation-centers/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
         body: JSON.stringify({ ...center, current: newCurrent, contact: center.contact.join(',') })

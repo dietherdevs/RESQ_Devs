@@ -86,7 +86,8 @@ export function DashboardHome() {
       const token = localStorage.getItem('auth_token') || localStorage.getItem('token') || '';
       if (!token) return;
 
-      const response = await fetch('http://localhost:8000/api/admin/dashboard-stats', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${apiUrl}/admin/dashboard-stats`, {
         headers: {
           'Accept': 'application/json',
           'Authorization': `Bearer ${token}`

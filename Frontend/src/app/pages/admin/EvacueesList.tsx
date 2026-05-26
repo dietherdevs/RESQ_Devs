@@ -45,8 +45,8 @@ export function EvacueesList() {
   const exportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchEvacuees();
-    fetchCentersList();
+    // Fire API calls concurrently
+    Promise.all([fetchEvacuees(), fetchCentersList()]);
   }, []);
 
   const fetchEvacuees = async () => {
@@ -72,7 +72,7 @@ export function EvacueesList() {
       });
       if (response.ok) {
         const result = await response.json();
-        setCentersList(result.data.map((c: any) => c.name));
+        setCentersList(result.data.map((c: { name: string }) => c.name));
       }
     } catch (error) {
       console.error("Failed to fetch centers list", error);
@@ -94,6 +94,7 @@ export function EvacueesList() {
   }), { people: 0, pwd: 0, seniors: 0, pregnant: 0, babies: 0 });
 
   const openAdd = () => { setForm(emptyForm); setEditId(null); setShowForm(true); };
+  
   const openEdit = (e: Evacuee) => {
     setForm({ head: e.head, phone: e.phone, address: e.address, total: e.total, pwd: e.pwd, seniors: e.seniors, pregnant: e.pregnant, babies: e.babies, center: e.center });
     setEditId(e.id);

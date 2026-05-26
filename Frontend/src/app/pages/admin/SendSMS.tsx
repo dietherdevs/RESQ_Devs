@@ -81,7 +81,8 @@ export function SendSMS() {
     const fetchRecipients = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        const response = await fetch('http://localhost:8000/api/admin/sms-recipients', {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+        const response = await fetch(`${apiUrl}/admin/sms-recipients`, {
           headers: {
             'Accept': 'application/json',
             'Authorization': `Bearer ${token}`
@@ -101,7 +102,8 @@ export function SendSMS() {
 
     const fetchCurrentFlood = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/flood/history?t=' + Date.now());
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+        const response = await fetch(`${apiUrl}/flood/history?t=${Date.now()}`);
         const result = await response.json();
         if (result && result.length > 0) {
           // Auto-fill the highest/latest water level
@@ -139,7 +141,8 @@ export function SendSMS() {
     setSending(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/admin/broadcast-sms', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${apiUrl}/admin/broadcast-sms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

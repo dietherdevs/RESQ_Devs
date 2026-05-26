@@ -605,7 +605,8 @@ export function PublicPage() {
 
   const fetchLiveFlood = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/flood/history?t=' + Date.now());
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${apiUrl}/flood/history?t=${Date.now()}`);
       if (response.ok) {
         const data = await response.json();
         setLiveFloodData(Array.isArray(data) ? data : [data]);
@@ -617,7 +618,8 @@ export function PublicPage() {
 
   const fetchLiveEvac = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/evacuation-centers?t=' + Date.now());
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${apiUrl}/evacuation-centers?t=${Date.now()}`);
       if (response.ok) {
         const data = await response.json();
         const actualData = Array.isArray(data) ? data : (data.data || []);
