@@ -6,26 +6,20 @@ return [
     |--------------------------------------------------------------------------
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
-    |
-    | Here you may configure your settings for cross-origin resource sharing
-    | or "CORS". This determines what cross-origin operations may execute
-    | in web browsers. You are free to adjust these settings as needed.
-    |
-    | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
-    |
     */
 
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'http://localhost:5173',
-        'https://6a15d917b7265a8ddb9618d8--resqsystem.netlify.app',
-        'https://resqsystem.netlify.app',
-    ],
+    // Leave this matching your local dev server
+    'allowed_origins' => ['http://localhost:5173'], 
 
-    'allowed_origins_patterns' => [],
+    // ADD THIS LINE BELOW: This allows ANY netlify.app subdomain to connect safely
+    'allowed_origins_patterns' => [
+        '/^https:\/\/[a-zA-Z0-9-]+--[a-zA-Z0-9-]+\.netlify\.app$/', // For Netlify preview branches
+        '/^https:\/\/[a-zA-Z0-9-]+\.netlify\.app$/'                 // For your main Netlify production URL
+    ],
 
     'allowed_headers' => ['*'],
 
