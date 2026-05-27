@@ -41,8 +41,17 @@ const tags = [
 ];
 
 export function EvacueesList() {
-  const [evacuees, setEvacuees] = useState<Evacuee[]>([]);
-  const [centersList, setCentersList] = useState<Center[]>([]); // Updated to hold full center objects
+  // Try to load cached data immediately so the screen doesn't show an empty state during the initial fetch
+  const [evacuees, setEvacuees] = useState<Evacuee[]>(() => {
+    const cached = sessionStorage.getItem('evacuees_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
+  
+  const [centersList, setCentersList] = useState<Center[]>(() => {
+    const cached = sessionStorage.getItem('centers_list_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
+
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -55,6 +64,7 @@ export function EvacueesList() {
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
   useEffect(() => {
+    // Always fetch fresh data in the background to keep the cache and UI up to date
     Promise.all([fetchEvacuees(), fetchCentersList()]);
   }, []);
 
@@ -67,6 +77,8 @@ export function EvacueesList() {
       if (response.ok) {
         const result = await response.json();
         setEvacuees(result.data);
+        // Save the fresh data to cache for instant loading next time
+        sessionStorage.setItem('evacuees_cache', JSON.stringify(result.data));
       }
     } catch (error) {
       console.error("Failed to fetch evacuees", error);
@@ -81,9 +93,10 @@ export function EvacueesList() {
       });
       if (response.ok) {
         const result = await response.json();
-        // Filter out closed or full centers, keeping only 'open' ones for the dropdown
         const available = result.data.filter((c: Center) => c.status === 'open');
         setCentersList(available);
+        // Save the fresh data to cache for instant loading next time
+        sessionStorage.setItem('centers_list_cache', JSON.stringify(available));
       }
     } catch (error) {
       console.error("Failed to fetch centers list", error);
@@ -133,7 +146,6 @@ export function EvacueesList() {
 
       if (response.ok) {
         await fetchEvacuees();
-        // Also refresh the centers list so the "Available" count updates in the dropdown next time
         await fetchCentersList(); 
         setShowForm(false);
       }
@@ -152,7 +164,11 @@ export function EvacueesList() {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
       if (response.ok) {
-        setEvacuees(prev => prev.filter(e => e.id !== id));
+        // Update local state immediately for a snappy UI
+        const updatedEvacuees = evacuees.filter(e => e.id !== id);
+        setEvacuees(updatedEvacuees);
+        // Update the cache as well so it doesn't temporarily reappear on reload
+        sessionStorage.setItem('evacuees_cache', JSON.stringify(updatedEvacuees));
         setDeleteConfirm(null);
       }
     } catch (error) {
