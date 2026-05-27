@@ -8,7 +8,6 @@ import {
   ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 
-// Define the alert thresholds outside the component so they can be reused
 const getAlertInfo = (level: number) => {
   if (level >= 18) return { label: 'CRITICAL', color: '#7F1D1D' };
   if (level >= 17) return { label: 'ALERT LEVEL 3', color: '#EF4444' };
@@ -17,10 +16,8 @@ const getAlertInfo = (level: number) => {
   return { label: 'NORMAL', color: '#22C55E' };
 };
 
-// ─── Utility: Manila-Only Parser ─────────────────────────────────────────────
 const parseManilaDate = (dateStr: string) => {
   if (!dateStr) return new Date();
-  
   try {
     let cleanStr = dateStr.trim().replace('Z', '').split('+')[0];
     cleanStr = cleanStr.replace(' ', 'T');
@@ -62,13 +59,27 @@ function ChartTooltip({ active, payload, label }: any) {
 }
 
 export function FloodMonitoring() {
-  const [currentLevel, setCurrentLevel] = useState(0);
-  const [inputLevel, setInputLevel] = useState('0');
-  const [history, setHistory] = useState<any[]>([]); 
+  // SPEED HACK: Instantly load cached chart data and current level
+  const [history, setHistory] = useState<any[]>(() => {
+    const cached = sessionStorage.getItem('flood_history_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [currentLevel, setCurrentLevel] = useState(() => {
+    const cached = sessionStorage.getItem('flood_current_cache');
+    return cached ? Number(cached) : 0;
+  });
+  const [inputLevel, setInputLevel] = useState(() => {
+    const cached = sessionStorage.getItem('flood_current_cache');
+    return cached || '0';
+  });
+  const [lastUpdated, setLastUpdated] = useState(() => {
+    const cached = sessionStorage.getItem('flood_last_updated_cache');
+    return cached || 'Fetching...';
+  });
+
   const [sensorOnline, setSensorOnline] = useState(true);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState('Fetching...');
 
   const fetchLiveHistory = useCallback(async () => {
     if (!sensorOnline) return; 
@@ -85,18 +96,22 @@ export function FloodMonitoring() {
         }));
 
         setHistory(mappedData);
+        sessionStorage.setItem('flood_history_cache', JSON.stringify(mappedData));
         
         if (mappedData.length > 0) {
           const latest = result[result.length - 1];
           const levelVal = parseFloat(latest.water_level);
           setCurrentLevel(levelVal);
           setInputLevel(levelVal.toString());
+          sessionStorage.setItem('flood_current_cache', levelVal.toString());
           
           const targetDate = parseManilaDate(latest.fetched_at || latest.created_at);
           if (!isNaN(targetDate.getTime())) {
-            setLastUpdated(targetDate.toLocaleString('en-PH', { 
+            const dateStr = targetDate.toLocaleString('en-PH', { 
               month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' 
-            }));
+            });
+            setLastUpdated(dateStr);
+            sessionStorage.setItem('flood_last_updated_cache', dateStr);
           } else {
             setLastUpdated('Unknown Date format');
           }
@@ -140,18 +155,26 @@ export function FloodMonitoring() {
 
       if (response.ok) {
           const newEntry = { time: formatTime(new Date()), level: val };
+          const newDateStr = `${new Date().toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })} • ${formatTime(new Date())}`;
           
           setCurrentLevel(val);
-          setHistory(prev => [...prev.slice(-23), newEntry]);
-          setLastUpdated(`${new Date().toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })} • ${formatTime(new Date())}`);
+          setHistory(prev => {
+            const newHistory = [...prev.slice(-23), newEntry];
+            sessionStorage.setItem('flood_history_cache', JSON.stringify(newHistory));
+            return newHistory;
+          });
+          setLastUpdated(newDateStr);
           
+          sessionStorage.setItem('flood_current_cache', val.toString());
+          sessionStorage.setItem('flood_last_updated_cache', newDateStr);
+
           setSaving(false);
           setSaved(true);
           setTimeout(() => setSaved(false), 3000);
       } else {
           console.error("Failed to save override. Status:", response.status);
           if (response.status === 401) {
-             window.alert("Authentication error: Please log out and log back in to refresh your admin session.");
+              window.alert("Authentication error: Please log out and log back in to refresh your admin session.");
           }
           setSaving(false);
       }
@@ -277,7 +300,6 @@ export function FloodMonitoring() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
               <XAxis dataKey="time" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} />
               
-              {/* ─── NEW: Dynamic YAxis ─── */}
               <YAxis 
                 domain={['dataMin - 0.2', 'dataMax + 0.2']} 
                 tick={{ fill: '#9CA3AF', fontSize: 11 }} 
@@ -291,7 +313,6 @@ export function FloodMonitoring() {
               <ReferenceLine key="ref-fm-16" y={16} stroke={ORANGE} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: '16m', fill: ORANGE, fontSize: 10, position: 'right' }} />
               <ReferenceLine key="ref-fm-17" y={17} stroke="#EF4444" strokeDasharray="4 4" strokeWidth={1.5} label={{ value: '17m', fill: '#EF4444', fontSize: 10, position: 'right' }} />
               
-              {/* ─── NEW: Added dots ─── */}
               <Area
                 type="monotone"
                 dataKey="level"

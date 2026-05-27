@@ -58,13 +58,16 @@ interface RecipientGroup {
 export function SendSMS() {
   const [message, setMessage] = useState('');
   
-  // Dynamic User States
-  const [recipients, setRecipients] = useState<RecipientGroup[]>([]);
+  // SPEED HACK: Instantly load cached recipients
+  const [recipients, setRecipients] = useState<RecipientGroup[]>(() => {
+    const cached = sessionStorage.getItem('sms_recipients_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
   const [selectedRecipient, setSelectedRecipient] = useState<RecipientGroup | null>(null);
-  const [isLoadingRecipients, setIsLoadingRecipients] = useState(true);
+  const [isLoadingRecipients, setIsLoadingRecipients] = useState(() => !sessionStorage.getItem('sms_recipients_cache'));
 
   // Auto-Fill Variables State
-  const [varFlood, setVarFlood] = useState('');
+  const [varFlood, setVarFlood] = useState(() => sessionStorage.getItem('var_flood_cache') || '');
   const [varEvac, setVarEvac] = useState('');
   const [varTime, setVarTime] = useState('');
 
@@ -76,7 +79,6 @@ export function SendSMS() {
   const charCount = message.length;
   const smsCount = Math.ceil(charCount / 160) || 1;
 
-  // FETCH REAL USERS AND CURRENT FLOOD LEVEL ON MOUNT
   useEffect(() => {
     const fetchRecipients = async () => {
       try {
@@ -91,6 +93,7 @@ export function SendSMS() {
         const result = await response.json();
         if (response.ok && result.status === 'success') {
           setRecipients(result.data);
+          sessionStorage.setItem('sms_recipients_cache', JSON.stringify(result.data));
           if (result.data.length > 0) setSelectedRecipient(result.data[0]);
         }
       } catch (error) {
@@ -106,8 +109,9 @@ export function SendSMS() {
         const response = await fetch(`${apiUrl}/flood/history?t=${Date.now()}`);
         const result = await response.json();
         if (result && result.length > 0) {
-          // Auto-fill the highest/latest water level
-          setVarFlood(parseFloat(result[result.length - 1].water_level).toFixed(2));
+          const val = parseFloat(result[result.length - 1].water_level).toFixed(2);
+          setVarFlood(val);
+          sessionStorage.setItem('var_flood_cache', val);
         }
       } catch (error) {
         console.error("Failed to fetch flood level for SMS auto-fill", error);
@@ -118,10 +122,8 @@ export function SendSMS() {
     fetchCurrentFlood();
   }, []);
 
-  // Inject variables into template
   const handleTemplate = (t: typeof templates[0]) => {
     let finalMsg = t.msg;
-    // Replace placeholders if the admin has filled out the variables (or fetched automatically)
     if (varFlood) finalMsg = finalMsg.replace(/\{flood_levels\}/g, varFlood);
     if (varEvac) finalMsg = finalMsg.replace(/\{evacuation_centers\}/g, varEvac);
     if (varTime) finalMsg = finalMsg.replace(/\{time\}/g, varTime);
@@ -170,7 +172,6 @@ export function SendSMS() {
     }
   };
 
-  // Check if any placeholders { } are left in the message box
   const hasPlaceholders = message.includes('{') || message.includes('}');
   const isSendDisabled = !message.trim() || sending || !selectedRecipient || selectedRecipient.count === 0 || hasPlaceholders;
 

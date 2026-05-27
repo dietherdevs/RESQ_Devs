@@ -4,7 +4,6 @@ import { History, Clock, User, Users, CheckCircle, XCircle, AlertCircle } from '
 const NAVY = '#0D1B2A';
 const ORANGE = '#FF6B2B';
 
-// Define the shape of our log data based on the Laravel backend
 interface SmsLog {
   id: number;
   user: {
@@ -19,8 +18,12 @@ interface SmsLog {
 }
 
 export function SmsLogs() {
-  const [logs, setLogs] = useState<SmsLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  // SPEED HACK: Instantly load cached logs
+  const [logs, setLogs] = useState<SmsLog[]>(() => {
+    const cached = sessionStorage.getItem('sms_logs_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [loading, setLoading] = useState(() => !sessionStorage.getItem('sms_logs_cache'));
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export function SmsLogs() {
 
   const fetchLogs = async () => {
     try {
-      const token = localStorage.getItem('auth_token'); // Using the correct key!
+      const token = localStorage.getItem('auth_token');
 
       if (!token) {
         setError('Session expired. Please log in again to view logs.');
@@ -50,6 +53,7 @@ export function SmsLogs() {
 
       if (response.ok && result.status === 'success') {
         setLogs(result.data);
+        sessionStorage.setItem('sms_logs_cache', JSON.stringify(result.data));
       } else {
         setError(result.message || 'Failed to fetch SMS logs.');
       }
@@ -61,7 +65,6 @@ export function SmsLogs() {
     }
   };
 
-  // Helper function to format the Laravel timestamp
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-PH', {

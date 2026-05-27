@@ -34,7 +34,11 @@ export function ManageAdmins() {
   const { user: currentUser } = useApp();
   const isSuperAdmin = currentUser?.role === 'superadmin';
 
-  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  // SPEED HACK: Instantly load cached admins
+  const [admins, setAdmins] = useState<AdminUser[]>(() => {
+    const cached = sessionStorage.getItem('manage_admins_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -64,6 +68,7 @@ export function ManageAdmins() {
       if (response.ok) {
         const data = await response.json();
         setAdmins(data);
+        sessionStorage.setItem('manage_admins_cache', JSON.stringify(data));
       }
     } catch (error) {
       console.error('Failed to fetch admins:', error);
@@ -131,15 +136,17 @@ export function ManageAdmins() {
       const data = await response.json();
 
       if (response.ok) {
-        // If updating
         if (editId !== null) {
-          setAdmins(prev => prev.map(a => a.id === editId ? data : a));
+          const updatedAdmins = admins.map(a => a.id === editId ? data : a);
+          setAdmins(updatedAdmins);
+          sessionStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
           setSuccess('Admin updated successfully.');
         } 
-        // If creating
         else {
-          setAdmins(prev => [...prev, data.admin]);
-          setSuccess(data.message); // Shows the email sent message
+          const updatedAdmins = [...admins, data.admin];
+          setAdmins(updatedAdmins);
+          sessionStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
+          setSuccess(data.message); 
         }
         
         setShowForm(false);
@@ -167,7 +174,9 @@ export function ManageAdmins() {
       });
 
       if (response.ok) {
-        setAdmins(prev => prev.filter(a => a.id !== id));
+        const updatedAdmins = admins.filter(a => a.id !== id);
+        setAdmins(updatedAdmins);
+        sessionStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
         setDeleteConfirm(null);
         setSuccess('Admin removed successfully.');
         setTimeout(() => setSuccess(''), 3000);
@@ -181,9 +190,14 @@ export function ManageAdmins() {
     const admin = admins.find(a => a.id === id);
     if (!admin) return;
 
+    // Optimistic UI + Cache Update
+    const updatedAdmins = admins.map(a => a.id === id ? { ...a, active: !a.active } : a);
+    setAdmins(updatedAdmins);
+    sessionStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
+
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
-      const response = await fetch(`${apiUrl}/admin/manage-admins/${id}/toggle-status`, {
+      await fetch(`${apiUrl}/admin/manage-admins/${id}/toggle-status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -192,12 +206,9 @@ export function ManageAdmins() {
         },
         body: JSON.stringify({ active: !admin.active })
       });
-
-      if (response.ok) {
-        setAdmins(prev => prev.map(a => a.id === id ? { ...a, active: !a.active } : a));
-      }
     } catch (error) {
       console.error('Error toggling status:', error);
+      fetchAdmins(); // Revert on fail
     }
   };
 
