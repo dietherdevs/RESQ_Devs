@@ -36,7 +36,11 @@ interface EditForm {
 const empty: EditForm = { id: null, name: '', location: '', contact: '', capacity: 200, current: 0, status: 'open' };
 
 export function EvacuationStatus() {
-  const [centers, setCenters] = useState<EvacCenter[]>([]);
+  // SPEED HACK: Instantly load cached centers
+  const [centers, setCenters] = useState<EvacCenter[]>(() => {
+    const cached = sessionStorage.getItem('evac_centers_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
   const [editId, setEditId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<EditForm>(empty);
@@ -63,6 +67,8 @@ export function EvacuationStatus() {
           contact: c.contact ? c.contact.split(',').map((s: string) => s.trim()) : []
         }));
         setCenters(mapped);
+        // Save to cache
+        sessionStorage.setItem('evac_centers_cache', JSON.stringify(mapped));
       }
     } catch (error) {
       console.error("Failed to fetch centers", error);
@@ -110,7 +116,7 @@ export function EvacuationStatus() {
       });
 
       if (response.ok) {
-        await fetchCenters(); // Refresh list
+        await fetchCenters(); // Refresh list and cache
         setShowForm(false);
         setEditId(null);
       }
@@ -132,7 +138,9 @@ export function EvacuationStatus() {
       });
       
       if (response.ok) {
-        setCenters(prev => prev.filter(c => c.id !== deleteTarget.id));
+        const updatedCenters = centers.filter(c => c.id !== deleteTarget.id);
+        setCenters(updatedCenters);
+        sessionStorage.setItem('evac_centers_cache', JSON.stringify(updatedCenters)); // Update cache instantly
         setDeleteTarget(null);
       }
     } catch (error) {
@@ -147,8 +155,10 @@ export function EvacuationStatus() {
     
     const newCurrent = status === 'closed' ? 0 : center.current;
     
-    // Optimistic UI update
-    setCenters(prev => prev.map(c => c.id === id ? { ...c, status, current: newCurrent } : c));
+    // Optimistic UI update + Cache Update
+    const updatedCenters = centers.map(c => c.id === id ? { ...c, status, current: newCurrent } : c);
+    setCenters(updatedCenters);
+    sessionStorage.setItem('evac_centers_cache', JSON.stringify(updatedCenters));
 
     try {
       const token = localStorage.getItem('auth_token');
@@ -175,6 +185,9 @@ export function EvacuationStatus() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
         body: JSON.stringify({ ...center, current: newCurrent, contact: center.contact.join(',') })
       });
+      // Silent cache update for next visit
+      const updatedCenters = centers.map(c => c.id === id ? { ...c, current: newCurrent } : c);
+      sessionStorage.setItem('evac_centers_cache', JSON.stringify(updatedCenters));
     } catch (error) {
       fetchCenters();
     }

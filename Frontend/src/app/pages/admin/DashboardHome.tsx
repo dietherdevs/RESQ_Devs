@@ -61,17 +61,23 @@ function ChartTooltip({ active, payload, label }: any) {
 export function DashboardHome() {
   const { user, currentWaterLevel } = useApp() as any; 
   
-  const [statsData, setStatsData] = useState<DashboardStats>({
-    water_level: 0,
-    open_centers: 0,
-    total_centers: 0,
-    total_evacuees: 0,
-    sms_sent_today: 0,
-    recent_activity: [],
-    evacuation_centers: [],
-    flood_history: []
+  // SPEED HACK: Load instantly from cache if available
+  const [statsData, setStatsData] = useState<DashboardStats>(() => {
+    const cached = sessionStorage.getItem('dashboard_stats_cache');
+    return cached ? JSON.parse(cached) : {
+      water_level: 0,
+      open_centers: 0,
+      total_centers: 0,
+      total_evacuees: 0,
+      sms_sent_today: 0,
+      recent_activity: [],
+      evacuation_centers: [],
+      flood_history: []
+    };
   });
-  const [loading, setLoading] = useState(true);
+  
+  // Only show loading state if we have absolutely no cached data
+  const [loading, setLoading] = useState(() => !sessionStorage.getItem('dashboard_stats_cache'));
 
   useEffect(() => {
     fetchDashboardStats();
@@ -98,6 +104,8 @@ export function DashboardHome() {
 
       if (response.ok && result.status === 'success') {
         setStatsData(result.data);
+        // Save fresh data to cache for the next time they visit the tab
+        sessionStorage.setItem('dashboard_stats_cache', JSON.stringify(result.data));
       }
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);

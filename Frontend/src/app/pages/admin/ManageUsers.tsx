@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'; // Added useEffect
+import { useState, useEffect } from 'react';
 import {
   UserCog, CheckCircle, XCircle, Clock, Eye, Search, X,
   ChevronDown, User, Phone, MapPin, Calendar, Image, ShieldOff,
@@ -23,8 +23,12 @@ export function ManageUsers() {
   const { user: currentUser } = useApp();
   const isStaff = currentUser?.role === 'staff';
 
-  const [users, setUsers] = useState<RegisteredUser[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // SPEED HACK: Instantly load cached users
+  const [users, setUsers] = useState<RegisteredUser[]>(() => {
+    const cached = sessionStorage.getItem('manage_users_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [isLoading, setIsLoading] = useState(() => !sessionStorage.getItem('manage_users_cache'));
   
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
@@ -34,9 +38,8 @@ export function ManageUsers() {
   const [rejectCustom, setRejectCustom] = useState('');
   const [approving, setApproving] = useState<number | null>(null);
 
-  // ─── UPDATED: Fetch ALL users from Laravel for the History Tabs ────────────
+  // ─── Fetch ALL users from Laravel for the History Tabs ────────────
   const fetchAllUsers = async () => {
-    setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
@@ -50,7 +53,6 @@ export function ManageUsers() {
 
       if (response.ok) {
         const data = await response.json();
-        // Map Laravel User model to your RegisteredUser interface
         const mapped = data.map((u: any) => ({
           id: u.id,
           name: u.name,
@@ -64,6 +66,8 @@ export function ManageUsers() {
           idImageUrl: u.id_image_url 
         }));
         setUsers(mapped);
+        // Save to cache for instant load next visit
+        sessionStorage.setItem('manage_users_cache', JSON.stringify(mapped));
       }
     } catch (err) {
       console.error("Failed to fetch users:", err);
@@ -109,7 +113,9 @@ export function ManageUsers() {
       });
 
       if (response.ok) {
-        setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'approved', smsEnabled: true } : u));
+        const updatedUsers = users.map(u => u.id === id ? { ...u, status: 'approved', smsEnabled: true } as RegisteredUser : u);
+        setUsers(updatedUsers);
+        sessionStorage.setItem('manage_users_cache', JSON.stringify(updatedUsers)); // Update cache instantly
       }
     } catch (err) {
       console.error("Approval failed:", err);
@@ -118,7 +124,7 @@ export function ManageUsers() {
     }
   };
 
-  // ─── UPDATED: Reject Logic now updates status instead of removing user ─────
+  // ─── Reject Logic ─────
   const handleReject = async () => {
     if (rejectTarget === null) return;
     
@@ -135,8 +141,9 @@ export function ManageUsers() {
       });
 
       if (response.ok) {
-        // Move the user to the rejected tab instead of filtering them out
-        setUsers(prev => prev.map(u => u.id === rejectTarget ? { ...u, status: 'rejected', smsEnabled: false } : u));
+        const updatedUsers = users.map(u => u.id === rejectTarget ? { ...u, status: 'rejected', smsEnabled: false } as RegisteredUser : u);
+        setUsers(updatedUsers);
+        sessionStorage.setItem('manage_users_cache', JSON.stringify(updatedUsers)); // Update cache instantly
       }
     } catch (err) {
       console.error("Rejection failed:", err);
