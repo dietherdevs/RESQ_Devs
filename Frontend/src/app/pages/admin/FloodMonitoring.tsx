@@ -61,19 +61,19 @@ function ChartTooltip({ active, payload, label }: any) {
 export function FloodMonitoring() {
   // SPEED HACK: Instantly load cached chart data and current level
   const [history, setHistory] = useState<any[]>(() => {
-    const cached = sessionStorage.getItem('flood_history_cache');
+    const cached = localStorage.getItem('flood_history_cache');
     return cached ? JSON.parse(cached) : [];
   });
   const [currentLevel, setCurrentLevel] = useState(() => {
-    const cached = sessionStorage.getItem('flood_current_cache');
+    const cached = localStorage.getItem('flood_current_cache');
     return cached ? Number(cached) : 0;
   });
   const [inputLevel, setInputLevel] = useState(() => {
-    const cached = sessionStorage.getItem('flood_current_cache');
+    const cached = localStorage.getItem('flood_current_cache');
     return cached || '0';
   });
   const [lastUpdated, setLastUpdated] = useState(() => {
-    const cached = sessionStorage.getItem('flood_last_updated_cache');
+    const cached = localStorage.getItem('flood_last_updated_cache');
     return cached || 'Fetching...';
   });
 
@@ -96,14 +96,14 @@ export function FloodMonitoring() {
         }));
 
         setHistory(mappedData);
-        sessionStorage.setItem('flood_history_cache', JSON.stringify(mappedData));
+        localStorage.setItem('flood_history_cache', JSON.stringify(mappedData));
         
         if (mappedData.length > 0) {
           const latest = result[result.length - 1];
           const levelVal = parseFloat(latest.water_level);
           setCurrentLevel(levelVal);
           setInputLevel(levelVal.toString());
-          sessionStorage.setItem('flood_current_cache', levelVal.toString());
+          localStorage.setItem('flood_current_cache', levelVal.toString());
           
           const targetDate = parseManilaDate(latest.fetched_at || latest.created_at);
           if (!isNaN(targetDate.getTime())) {
@@ -111,7 +111,7 @@ export function FloodMonitoring() {
               month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' 
             });
             setLastUpdated(dateStr);
-            sessionStorage.setItem('flood_last_updated_cache', dateStr);
+            localStorage.setItem('flood_last_updated_cache', dateStr);
           } else {
             setLastUpdated('Unknown Date format');
           }
@@ -160,13 +160,13 @@ export function FloodMonitoring() {
           setCurrentLevel(val);
           setHistory(prev => {
             const newHistory = [...prev.slice(-23), newEntry];
-            sessionStorage.setItem('flood_history_cache', JSON.stringify(newHistory));
+            localStorage.setItem('flood_history_cache', JSON.stringify(newHistory));
             return newHistory;
           });
           setLastUpdated(newDateStr);
           
-          sessionStorage.setItem('flood_current_cache', val.toString());
-          sessionStorage.setItem('flood_last_updated_cache', newDateStr);
+          localStorage.setItem('flood_current_cache', val.toString());
+          localStorage.setItem('flood_last_updated_cache', newDateStr);
 
           setSaving(false);
           setSaved(true);

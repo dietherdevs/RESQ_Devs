@@ -60,14 +60,14 @@ export function SendSMS() {
   
   // SPEED HACK: Instantly load cached recipients
   const [recipients, setRecipients] = useState<RecipientGroup[]>(() => {
-    const cached = sessionStorage.getItem('sms_recipients_cache');
+    const cached = localStorage.getItem('sms_recipients_cache');
     return cached ? JSON.parse(cached) : [];
   });
   const [selectedRecipient, setSelectedRecipient] = useState<RecipientGroup | null>(null);
-  const [isLoadingRecipients, setIsLoadingRecipients] = useState(() => !sessionStorage.getItem('sms_recipients_cache'));
+  const [isLoadingRecipients, setIsLoadingRecipients] = useState(() => !localStorage.getItem('sms_recipients_cache'));
 
   // Auto-Fill Variables State
-  const [varFlood, setVarFlood] = useState(() => sessionStorage.getItem('var_flood_cache') || '');
+  const [varFlood, setVarFlood] = useState(() => localStorage.getItem('var_flood_cache') || '');
   const [varEvac, setVarEvac] = useState('');
   const [varTime, setVarTime] = useState('');
 
@@ -93,7 +93,7 @@ export function SendSMS() {
         const result = await response.json();
         if (response.ok && result.status === 'success') {
           setRecipients(result.data);
-          sessionStorage.setItem('sms_recipients_cache', JSON.stringify(result.data));
+          localStorage.setItem('sms_recipients_cache', JSON.stringify(result.data));
           if (result.data.length > 0) setSelectedRecipient(result.data[0]);
         }
       } catch (error) {
@@ -111,7 +111,7 @@ export function SendSMS() {
         if (result && result.length > 0) {
           const val = parseFloat(result[result.length - 1].water_level).toFixed(2);
           setVarFlood(val);
-          sessionStorage.setItem('var_flood_cache', val);
+          localStorage.setItem('var_flood_cache', val);
         }
       } catch (error) {
         console.error("Failed to fetch flood level for SMS auto-fill", error);

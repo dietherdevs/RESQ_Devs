@@ -20,10 +20,10 @@ interface SmsLog {
 export function SmsLogs() {
   // SPEED HACK: Instantly load cached logs
   const [logs, setLogs] = useState<SmsLog[]>(() => {
-    const cached = sessionStorage.getItem('sms_logs_cache');
+    const cached = localStorage.getItem('sms_logs_cache');
     return cached ? JSON.parse(cached) : [];
   });
-  const [loading, setLoading] = useState(() => !sessionStorage.getItem('sms_logs_cache'));
+  const [loading, setLoading] = useState(() => !localStorage.getItem('sms_logs_cache'));
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export function SmsLogs() {
 
       if (response.ok && result.status === 'success') {
         setLogs(result.data);
-        sessionStorage.setItem('sms_logs_cache', JSON.stringify(result.data));
+        localStorage.setItem('sms_logs_cache', JSON.stringify(result.data));
       } else {
         setError(result.message || 'Failed to fetch SMS logs.');
       }

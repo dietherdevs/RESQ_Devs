@@ -602,11 +602,11 @@ function AboutSection() {
 export function PublicPage() {
   // SPEED HACK: Load public dashboard data instantly
   const [liveFloodData, setLiveFloodData] = useState<any[]>(() => {
-    const cached = sessionStorage.getItem('public_flood_cache');
+    const cached = localStorage.getItem('public_flood_cache');
     return cached ? JSON.parse(cached) : [];
   });
   const [liveEvacData, setLiveEvacData] = useState<any[]>(() => {
-    const cached = sessionStorage.getItem('public_evac_cache');
+    const cached = localStorage.getItem('public_evac_cache');
     return cached ? JSON.parse(cached) : [];
   });
 
@@ -618,7 +618,7 @@ export function PublicPage() {
         const data = await response.json();
         const formattedData = Array.isArray(data) ? data : [data];
         setLiveFloodData(formattedData);
-        sessionStorage.setItem('public_flood_cache', JSON.stringify(formattedData));
+        localStorage.setItem('public_flood_cache', JSON.stringify(formattedData));
       }
     } catch (err) {
       console.error("Flood sync error:", err);
@@ -633,7 +633,7 @@ export function PublicPage() {
         const data = await response.json();
         const actualData = Array.isArray(data) ? data : (data.data || []);
         setLiveEvacData(actualData);
-        sessionStorage.setItem('public_evac_cache', JSON.stringify(actualData));
+        localStorage.setItem('public_evac_cache', JSON.stringify(actualData));
       }
     } catch (err) {
       console.error("Evac sync error:", err);

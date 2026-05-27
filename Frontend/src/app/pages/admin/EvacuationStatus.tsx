@@ -38,7 +38,7 @@ const empty: EditForm = { id: null, name: '', location: '', contact: '', capacit
 export function EvacuationStatus() {
   // SPEED HACK: Instantly load cached centers
   const [centers, setCenters] = useState<EvacCenter[]>(() => {
-    const cached = sessionStorage.getItem('evac_centers_cache');
+    const cached = localStorage.getItem('evac_centers_cache');
     return cached ? JSON.parse(cached) : [];
   });
   const [editId, setEditId] = useState<number | null>(null);
@@ -68,7 +68,7 @@ export function EvacuationStatus() {
         }));
         setCenters(mapped);
         // Save to cache
-        sessionStorage.setItem('evac_centers_cache', JSON.stringify(mapped));
+        localStorage.setItem('evac_centers_cache', JSON.stringify(mapped));
       }
     } catch (error) {
       console.error("Failed to fetch centers", error);
@@ -140,7 +140,7 @@ export function EvacuationStatus() {
       if (response.ok) {
         const updatedCenters = centers.filter(c => c.id !== deleteTarget.id);
         setCenters(updatedCenters);
-        sessionStorage.setItem('evac_centers_cache', JSON.stringify(updatedCenters)); // Update cache instantly
+        localStorage.setItem('evac_centers_cache', JSON.stringify(updatedCenters)); // Update cache instantly
         setDeleteTarget(null);
       }
     } catch (error) {
@@ -158,7 +158,7 @@ export function EvacuationStatus() {
     // Optimistic UI update + Cache Update
     const updatedCenters = centers.map(c => c.id === id ? { ...c, status, current: newCurrent } : c);
     setCenters(updatedCenters);
-    sessionStorage.setItem('evac_centers_cache', JSON.stringify(updatedCenters));
+    localStorage.setItem('evac_centers_cache', JSON.stringify(updatedCenters));
 
     try {
       const token = localStorage.getItem('auth_token');
@@ -187,7 +187,7 @@ export function EvacuationStatus() {
       });
       // Silent cache update for next visit
       const updatedCenters = centers.map(c => c.id === id ? { ...c, current: newCurrent } : c);
-      sessionStorage.setItem('evac_centers_cache', JSON.stringify(updatedCenters));
+      localStorage.setItem('evac_centers_cache', JSON.stringify(updatedCenters));
     } catch (error) {
       fetchCenters();
     }

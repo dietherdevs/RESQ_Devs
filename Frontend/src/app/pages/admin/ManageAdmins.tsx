@@ -36,7 +36,7 @@ export function ManageAdmins() {
 
   // SPEED HACK: Instantly load cached admins
   const [admins, setAdmins] = useState<AdminUser[]>(() => {
-    const cached = sessionStorage.getItem('manage_admins_cache');
+    const cached = localStorage.getItem('manage_admins_cache');
     return cached ? JSON.parse(cached) : [];
   });
   const [search, setSearch] = useState('');
@@ -68,7 +68,7 @@ export function ManageAdmins() {
       if (response.ok) {
         const data = await response.json();
         setAdmins(data);
-        sessionStorage.setItem('manage_admins_cache', JSON.stringify(data));
+        localStorage.setItem('manage_admins_cache', JSON.stringify(data));
       }
     } catch (error) {
       console.error('Failed to fetch admins:', error);
@@ -139,13 +139,13 @@ export function ManageAdmins() {
         if (editId !== null) {
           const updatedAdmins = admins.map(a => a.id === editId ? data : a);
           setAdmins(updatedAdmins);
-          sessionStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
+          localStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
           setSuccess('Admin updated successfully.');
         } 
         else {
           const updatedAdmins = [...admins, data.admin];
           setAdmins(updatedAdmins);
-          sessionStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
+          localStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
           setSuccess(data.message); 
         }
         
@@ -176,7 +176,7 @@ export function ManageAdmins() {
       if (response.ok) {
         const updatedAdmins = admins.filter(a => a.id !== id);
         setAdmins(updatedAdmins);
-        sessionStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
+        localStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
         setDeleteConfirm(null);
         setSuccess('Admin removed successfully.');
         setTimeout(() => setSuccess(''), 3000);
@@ -193,7 +193,7 @@ export function ManageAdmins() {
     // Optimistic UI + Cache Update
     const updatedAdmins = admins.map(a => a.id === id ? { ...a, active: !a.active } : a);
     setAdmins(updatedAdmins);
-    sessionStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
+    localStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';

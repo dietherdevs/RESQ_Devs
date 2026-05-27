@@ -63,7 +63,7 @@ export function DashboardHome() {
   
   // SPEED HACK: Load instantly from cache if available
   const [statsData, setStatsData] = useState<DashboardStats>(() => {
-    const cached = sessionStorage.getItem('dashboard_stats_cache');
+    const cached = localStorage.getItem('dashboard_stats_cache');
     return cached ? JSON.parse(cached) : {
       water_level: 0,
       open_centers: 0,
@@ -77,7 +77,7 @@ export function DashboardHome() {
   });
   
   // Only show loading state if we have absolutely no cached data
-  const [loading, setLoading] = useState(() => !sessionStorage.getItem('dashboard_stats_cache'));
+  const [loading, setLoading] = useState(() => !localStorage.getItem('dashboard_stats_cache'));
 
   useEffect(() => {
     fetchDashboardStats();
@@ -105,7 +105,7 @@ export function DashboardHome() {
       if (response.ok && result.status === 'success') {
         setStatsData(result.data);
         // Save fresh data to cache for the next time they visit the tab
-        sessionStorage.setItem('dashboard_stats_cache', JSON.stringify(result.data));
+        localStorage.setItem('dashboard_stats_cache', JSON.stringify(result.data));
       }
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);

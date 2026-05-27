@@ -43,12 +43,12 @@ const tags = [
 export function EvacueesList() {
   // Try to load cached data immediately so the screen doesn't show an empty state during the initial fetch
   const [evacuees, setEvacuees] = useState<Evacuee[]>(() => {
-    const cached = sessionStorage.getItem('evacuees_cache');
+    const cached = localStorage.getItem('evacuees_cache');
     return cached ? JSON.parse(cached) : [];
   });
   
   const [centersList, setCentersList] = useState<Center[]>(() => {
-    const cached = sessionStorage.getItem('centers_list_cache');
+    const cached = localStorage.getItem('centers_list_cache');
     return cached ? JSON.parse(cached) : [];
   });
 
@@ -78,7 +78,7 @@ export function EvacueesList() {
         const result = await response.json();
         setEvacuees(result.data);
         // Save the fresh data to cache for instant loading next time
-        sessionStorage.setItem('evacuees_cache', JSON.stringify(result.data));
+        localStorage.setItem('evacuees_cache', JSON.stringify(result.data));
       }
     } catch (error) {
       console.error("Failed to fetch evacuees", error);
@@ -96,7 +96,7 @@ export function EvacueesList() {
         const available = result.data.filter((c: Center) => c.status === 'open');
         setCentersList(available);
         // Save the fresh data to cache for instant loading next time
-        sessionStorage.setItem('centers_list_cache', JSON.stringify(available));
+        localStorage.setItem('centers_list_cache', JSON.stringify(available));
       }
     } catch (error) {
       console.error("Failed to fetch centers list", error);
@@ -168,7 +168,7 @@ export function EvacueesList() {
         const updatedEvacuees = evacuees.filter(e => e.id !== id);
         setEvacuees(updatedEvacuees);
         // Update the cache as well so it doesn't temporarily reappear on reload
-        sessionStorage.setItem('evacuees_cache', JSON.stringify(updatedEvacuees));
+        localStorage.setItem('evacuees_cache', JSON.stringify(updatedEvacuees));
         setDeleteConfirm(null);
       }
     } catch (error) {

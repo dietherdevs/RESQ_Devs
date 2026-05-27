@@ -25,10 +25,10 @@ export function ManageUsers() {
 
   // SPEED HACK: Instantly load cached users
   const [users, setUsers] = useState<RegisteredUser[]>(() => {
-    const cached = sessionStorage.getItem('manage_users_cache');
+    const cached = localStorage.getItem('manage_users_cache');
     return cached ? JSON.parse(cached) : [];
   });
-  const [isLoading, setIsLoading] = useState(() => !sessionStorage.getItem('manage_users_cache'));
+  const [isLoading, setIsLoading] = useState(() => !localStorage.getItem('manage_users_cache'));
   
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
@@ -67,7 +67,7 @@ export function ManageUsers() {
         }));
         setUsers(mapped);
         // Save to cache for instant load next visit
-        sessionStorage.setItem('manage_users_cache', JSON.stringify(mapped));
+        localStorage.setItem('manage_users_cache', JSON.stringify(mapped));
       }
     } catch (err) {
       console.error("Failed to fetch users:", err);
@@ -115,7 +115,7 @@ export function ManageUsers() {
       if (response.ok) {
         const updatedUsers = users.map(u => u.id === id ? { ...u, status: 'approved', smsEnabled: true } as RegisteredUser : u);
         setUsers(updatedUsers);
-        sessionStorage.setItem('manage_users_cache', JSON.stringify(updatedUsers)); // Update cache instantly
+        localStorage.setItem('manage_users_cache', JSON.stringify(updatedUsers)); // Update cache instantly
       }
     } catch (err) {
       console.error("Approval failed:", err);
@@ -143,7 +143,7 @@ export function ManageUsers() {
       if (response.ok) {
         const updatedUsers = users.map(u => u.id === rejectTarget ? { ...u, status: 'rejected', smsEnabled: false } as RegisteredUser : u);
         setUsers(updatedUsers);
-        sessionStorage.setItem('manage_users_cache', JSON.stringify(updatedUsers)); // Update cache instantly
+        localStorage.setItem('manage_users_cache', JSON.stringify(updatedUsers)); // Update cache instantly
       }
     } catch (err) {
       console.error("Rejection failed:", err);
