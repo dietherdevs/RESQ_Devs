@@ -183,13 +183,15 @@ export function RegisterModal() {
             <div>
               <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Date of Birth *</label>
               <input required type="date" value={form.dob} onChange={e => handleChange('dob', e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg text-sm text-white border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
+                /* FIX: Changed from py-2.5 to h-[42px] for exact mobile alignment */
+                className="w-full h-[42px] px-3 rounded-lg text-sm text-white border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)', colorScheme: 'dark' }} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Gender *</label>
               <select required value={form.gender} onChange={e => handleChange('gender', e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg text-sm text-white border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
+                /* FIX: Changed from py-2.5 to h-[42px] for exact mobile alignment */
+                className="w-full h-[42px] px-3 rounded-lg text-sm text-white border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
                 style={{ backgroundColor: '#132236', colorScheme: 'dark' }}>
                 <option value="">Select</option>
                 <option value="male">Male</option>
