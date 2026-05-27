@@ -600,8 +600,15 @@ function AboutSection() {
 }
 
 export function PublicPage() {
-  const [liveFloodData, setLiveFloodData] = useState<any[]>([]);
-  const [liveEvacData, setLiveEvacData] = useState<any[]>([]);
+  // SPEED HACK: Load public dashboard data instantly
+  const [liveFloodData, setLiveFloodData] = useState<any[]>(() => {
+    const cached = sessionStorage.getItem('public_flood_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [liveEvacData, setLiveEvacData] = useState<any[]>(() => {
+    const cached = sessionStorage.getItem('public_evac_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
 
   const fetchLiveFlood = async () => {
     try {
@@ -609,7 +616,9 @@ export function PublicPage() {
       const response = await fetch(`${apiUrl}/flood/history?t=${Date.now()}`);
       if (response.ok) {
         const data = await response.json();
-        setLiveFloodData(Array.isArray(data) ? data : [data]);
+        const formattedData = Array.isArray(data) ? data : [data];
+        setLiveFloodData(formattedData);
+        sessionStorage.setItem('public_flood_cache', JSON.stringify(formattedData));
       }
     } catch (err) {
       console.error("Flood sync error:", err);
@@ -624,6 +633,7 @@ export function PublicPage() {
         const data = await response.json();
         const actualData = Array.isArray(data) ? data : (data.data || []);
         setLiveEvacData(actualData);
+        sessionStorage.setItem('public_evac_cache', JSON.stringify(actualData));
       }
     } catch (err) {
       console.error("Evac sync error:", err);
@@ -637,7 +647,7 @@ export function PublicPage() {
     const interval = setInterval(() => {
       fetchLiveFlood();
       fetchLiveEvac();
-    }, 600000); 
+    }, 60000); // Set to update every minute for public accuracy
 
     return () => clearInterval(interval);
   }, []);
