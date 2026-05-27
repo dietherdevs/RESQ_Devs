@@ -21,6 +21,14 @@ interface Evacuee {
   center: string;
 }
 
+interface Center {
+  id: number;
+  name: string;
+  capacity: number;
+  current: number;
+  status: string;
+}
+
 const emptyForm: Omit<Evacuee, 'id'> = {
   head: '', phone: '', address: '', total: 1, pwd: 0, seniors: 0, pregnant: 0, babies: 0, center: '',
 };
@@ -34,7 +42,7 @@ const tags = [
 
 export function EvacueesList() {
   const [evacuees, setEvacuees] = useState<Evacuee[]>([]);
-  const [centersList, setCentersList] = useState<string[]>([]);
+  const [centersList, setCentersList] = useState<Center[]>([]); // Updated to hold full center objects
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -44,15 +52,16 @@ export function EvacueesList() {
   const [saving, setSaving] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
   useEffect(() => {
-    // Fire API calls concurrently
     Promise.all([fetchEvacuees(), fetchCentersList()]);
   }, []);
 
   const fetchEvacuees = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/admin/evacuees', {
+      const response = await fetch(`${apiUrl}/admin/evacuees`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
       if (response.ok) {
@@ -67,12 +76,14 @@ export function EvacueesList() {
   const fetchCentersList = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/admin/evacuation-centers', {
+      const response = await fetch(`${apiUrl}/admin/evacuation-centers`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
       if (response.ok) {
         const result = await response.json();
-        setCentersList(result.data.map((c: { name: string }) => c.name));
+        // Filter out closed or full centers, keeping only 'open' ones for the dropdown
+        const available = result.data.filter((c: Center) => c.status === 'open');
+        setCentersList(available);
       }
     } catch (error) {
       console.error("Failed to fetch centers list", error);
@@ -107,8 +118,8 @@ export function EvacueesList() {
     try {
       const token = localStorage.getItem('auth_token');
       const url = editId 
-        ? `http://localhost:8000/api/admin/evacuees/${editId}` 
-        : 'http://localhost:8000/api/admin/evacuees';
+        ? `${apiUrl}/admin/evacuees/${editId}` 
+        : `${apiUrl}/admin/evacuees`;
 
       const response = await fetch(url, {
         method: editId ? 'PUT' : 'POST',
@@ -122,6 +133,8 @@ export function EvacueesList() {
 
       if (response.ok) {
         await fetchEvacuees();
+        // Also refresh the centers list so the "Available" count updates in the dropdown next time
+        await fetchCentersList(); 
         setShowForm(false);
       }
     } catch (error) {
@@ -134,7 +147,7 @@ export function EvacueesList() {
   const handleDelete = async (id: number) => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`http://localhost:8000/api/admin/evacuees/${id}`, {
+      const response = await fetch(`${apiUrl}/admin/evacuees/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
@@ -484,8 +497,12 @@ export function EvacueesList() {
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Evacuation Center *</label>
                 <select value={form.center} onChange={e => setForm(p => ({ ...p, center: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none" style={{ borderColor: 'rgba(0,0,0,0.1)', color: NAVY }}>
-                  <option value="">Select center</option>
-                  {centersList.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="" disabled>Select center</option>
+                  {centersList.map(c => (
+                    <option key={c.id} value={c.name}>
+                      {c.name} (Available: {c.capacity - c.current})
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
