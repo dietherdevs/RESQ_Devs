@@ -21,11 +21,11 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader
 
 # 7. Create required Laravel storage folders (Fix for valid cache path error)
-RUN mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions \
+RUN mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions storage/app/public \
     && chmod -R 775 storage bootstrap/cache
 
 # 8. Expose the port Render uses
 EXPOSE $PORT
 
 # 9. Start the Laravel server and run migrations automatically
-CMD php artisan config:clear && php artisan optimize:clear && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT
+CMD php artisan config:clear && php artisan optimize:clear && php artisan migrate --force && php artisan storage:link && php artisan serve --host=0.0.0.0 --port=$PORT
