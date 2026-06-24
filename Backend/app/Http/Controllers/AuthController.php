@@ -94,7 +94,6 @@ class AuthController extends Controller
                 'role' => $user->role,
                 'phone' => $user->phone_number, 
                 'address' => $user->address,
-                // RETURN EXACT DB NAME
                 'is_approved' => (bool) $user->is_approved, 
                 'verified' => $user->status === 'approved'
             ],
@@ -114,7 +113,7 @@ class AuthController extends Controller
             'lastName' => 'nullable|string',
             'phone' => 'nullable|string',
             'address' => 'nullable|string',
-            'is_approved' => 'nullable|boolean', // Validate exactly as the DB column
+            'is_approved' => 'nullable|boolean', 
         ]);
 
         if ($request->has('firstName') && $request->has('lastName')) {
@@ -134,9 +133,9 @@ class AuthController extends Controller
             $user->address = $request->address;
         }
         
-        // CHECK EXACT DB NAME
         if ($request->exists('is_approved')) {
             $user->is_approved = filter_var($request->is_approved, FILTER_VALIDATE_BOOLEAN); 
+            $user->status = $user->is_approved ? 'approved' : 'rejected';
         }
 
         $user->save();
@@ -150,7 +149,6 @@ class AuthController extends Controller
                 'role' => $user->role,
                 'phone' => $user->phone_number,
                 'address' => $user->address,
-                // RETURN EXACT DB NAME
                 'is_approved' => (bool) $user->is_approved,
                 'verified' => $user->status === 'approved'
             ]

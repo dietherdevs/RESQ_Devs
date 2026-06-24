@@ -18,10 +18,15 @@ class UserController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($user) {
-                // Attach the full URL for the ID image
-                $user->id_image_url = $user->id_image_path 
-                    ? asset('storage/' . $user->id_image_path) 
-                    : null;
+                if ($user->id_image_path) {
+                    // 1. Get standard asset URL
+                    $rawUrl = asset('storage/' . $user->id_image_path);
+                    
+                    // 2. FORCE upgrade to secure HTTPS to bypass Netlify's mixed-content block!
+                    $user->id_image_url = str_replace('http://', 'https://', $rawUrl);
+                } else {
+                    $user->id_image_url = null;
+                }
                 return $user;
             });
 
@@ -35,6 +40,7 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
         $user->status = 'approved';
+        $user->is_approved = true; // BUGFIX: Synced the boolean flag!
         $user->save();
 
         return response()->json([
@@ -44,13 +50,14 @@ class UserController extends Controller
 
     /**
      * Reject a fraudulent registration
-     * (UPDATED: Now updates status to 'rejected' instead of deleting, keeping it in history)
+     * Now updates status to 'rejected' instead of deleting, keeping it in history
      */
     public function rejectUser($id)
     {
         $user = User::findOrFail($id);
         
         $user->status = 'rejected';
+        $user->is_approved = false; // BUGFIX: Synced the boolean flag!
         $user->save();
 
         return response()->json([
