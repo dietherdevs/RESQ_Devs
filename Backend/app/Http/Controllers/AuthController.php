@@ -14,27 +14,40 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
+        // 1. Standardize phone format FIRST so unique DB check works 100% of the time
+        $phone = $request->phone;
+        $phone = str_replace([' ', '-'], '', $phone); 
+        if (str_starts_with($phone, '09')) {
+            $phone = '63' . substr($phone, 1); 
+        }
+
+        // Re-inject the cleaned phone back into request data for the validator
+        $request->merge(['formatted_phone' => $phone]);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'phone' => 'required|string|max:20',
-            'dob' => 'required|date',
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/[^A-Za-z0-9]/' // Must contain at least 1 symbol
+            ],
+            'formatted_phone' => 'required|string|max:20|unique:users,phone_number',
+            'dob' => 'required|date|before_or_equal:' . now()->subYears(18)->format('Y-m-d'),
             'gender' => 'required|string|max:20',
             'address' => 'required|string|max:255',
             'id_image' => 'required|image|mimes:jpeg,png,jpg|max:10240',
+        ], [
+            // Human-friendly fallback responses
+            'password.regex' => 'Your password must contain at least one special character (e.g., @, $, !, %, *, #, ?, &).',
+            'dob.before_or_equal' => 'You must be at least 18 years old to register.',
+            'formatted_phone.unique' => 'This phone number is already attached to an existing resident account.'
         ]);
 
         $imagePath = null;
         if ($request->hasFile('id_image')) {
             $imagePath = $request->file('id_image')->store('id_uploads', 'public'); 
-        }
-
-        // --- PHONE NUMBER AUTO-FORMATTING LOGIC ---
-        $phone = $request->phone;
-        $phone = str_replace([' ', '-'], '', $phone); 
-        if (str_starts_with($phone, '09')) {
-            $phone = '63' . substr($phone, 1); 
         }
 
         $user = User::create([
@@ -47,7 +60,7 @@ class AuthController extends Controller
             'address' => $request->address,
             'id_image_path' => $imagePath,
             'status' => 'pending',
-            'is_approved' => false, // STRICT DEFAULT TO FALSE ON REGISTRATION
+            'is_approved' => false, 
         ]);
 
         $token = $user->createToken('resq-auth-token')->plainTextToken;

@@ -24,9 +24,40 @@ export function RegisterModal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
+    // --- LAYER 1: INSTANT CLIENT-SIDE VALIDATION ---
+
+    // 1. Password Rule (8+ chars & 1 Special Symbol)
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+    const specialCharRegex = /[^A-Za-z0-9]/;
+    if (!specialCharRegex.test(form.password)) {
+      setError('Password must contain at least one special character (e.g., @, $, !, %, *, #, ?, &).');
+      return;
+    }
+
+    // 2. Age Rule (Strictly 18+)
+    if (!form.dob) {
+      setError('Please select your Date of Birth.');
+      return;
+    }
+    const birthDate = new Date(form.dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDifference = today.getMonth() - birthDate.getMonth();
+    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    if (age < 18) {
+      setError('You must be at least 18 years old to register for RESQ emergency alerts.');
+      return;
+    }
+
+    // 3. File Rule
     if (!idFile) {
-        setError('Please upload a valid government ID before submitting.');
+        setError('Please upload a valid government-issued ID before submitting.');
         return;
     }
 
@@ -36,7 +67,6 @@ export function RegisterModal() {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
       
       const formData = new FormData();
-      
       formData.append('name', `${form.firstName} ${form.lastName}`.trim());
       formData.append('email', form.email);
       formData.append('password', form.password);
@@ -48,9 +78,7 @@ export function RegisterModal() {
 
       const response = await fetch(`${apiUrl}/register`, {
         method: 'POST',
-        headers: {
-          'Accept': 'application/json'
-        },
+        headers: { 'Accept': 'application/json' },
         body: formData 
       });
 
@@ -59,14 +87,15 @@ export function RegisterModal() {
       if (response.ok) {
         setStep(2);
       } else {
+        // Grab the exact first human-readable error sentence sent by Laravel
         const errorMessage = data.errors 
-          ? Object.values(data.errors).flat().join(', ') 
+          ? Object.values(data.errors).flat()[0] 
           : data.message;
           
-        setError(errorMessage || 'Registration failed. Check your inputs.');
+        setError(String(errorMessage || 'Registration failed. Please verify your details.'));
       }
     } catch (err) {
-      setError('Unable to connect to the server. Is the backend running?');
+      setError('Unable to connect to the server. Please check your internet connection.');
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -123,9 +152,9 @@ export function RegisterModal() {
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           
           {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/50 flex items-start gap-2">
-              <ShieldAlert size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-red-200">{error}</p>
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/40 flex items-start gap-2.5">
+              <ShieldAlert size={16} className="text-red-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs font-medium text-red-200 leading-relaxed">{error}</p>
             </div>
           )}
 
@@ -153,22 +182,19 @@ export function RegisterModal() {
           </div>
 
           {/* Email + Password Row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">
-                Email *
-              </label>
+              <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Email *</label>
               <input required type="email" value={form.email} onChange={e => handleChange('email', e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} placeholder="maria@example.com" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">
-                Password *
-              </label>
+              <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Password *</label>
               <input required type="password" value={form.password} onChange={e => handleChange('password', e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg text-sm text-white placeholder:text-white/30 border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)' }} placeholder="••••••••" minLength={8} />
+              <span className="text-[10px] text-white/40 mt-1 block">8+ chars with 1 symbol (@, #, $, etc.)</span>
             </div>
           </div>
 
@@ -183,14 +209,13 @@ export function RegisterModal() {
             <div>
               <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Date of Birth *</label>
               <input required type="date" value={form.dob} onChange={e => handleChange('dob', e.target.value)}
-                /* Removed py-2.5, relying purely on strict inline height */
                 className="w-full px-3 rounded-lg text-sm text-white border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)', colorScheme: 'dark', height: '46px', minHeight: '46px', boxSizing: 'border-box' }} />
+              <span className="text-[10px] text-white/40 mt-1 block">Must be 18 years or older</span>
             </div>
             <div>
               <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">Gender *</label>
               <select required value={form.gender} onChange={e => handleChange('gender', e.target.value)}
-                /* Removed py-2.5, relying purely on strict inline height */
                 className="w-full px-3 rounded-lg text-sm text-white border border-white/10 focus:border-orange-400 focus:outline-none transition-colors"
                 style={{ backgroundColor: '#132236', colorScheme: 'dark', height: '46px', minHeight: '46px', boxSizing: 'border-box' }}>
                 <option value="">Select</option>
@@ -217,13 +242,8 @@ export function RegisterModal() {
               className="w-full border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all hover:border-orange-400/50"
               style={{ borderColor: idFile ? '#FF6B2B' : 'rgba(255,255,255,0.15)', backgroundColor: idFile ? 'rgba(255,107,43,0.08)' : 'rgba(255,255,255,0.03)' }}
             >
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={e => e.target.files && setIdFile(e.target.files[0])}
-              />
+              <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                onChange={e => e.target.files && setIdFile(e.target.files[0])} />
               {idFile ? (
                 <div className="flex items-center justify-center gap-2" style={{ color: '#FF6B2B' }}>
                   <CheckCircle size={18} />
