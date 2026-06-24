@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, Navigate, useLocation } from 'react-route
 import {
   LayoutDashboard, MessageSquare, Building2, Users, Activity,
   UserCog, ShieldCheck, Menu, X, LogOut, ChevronRight, Bell, Phone,
-  History // <--- ADDED: History icon for the new menu item
+  History 
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { LoginModal } from '../../components/modals/LoginModal';
@@ -16,15 +16,15 @@ const ORANGE = '#FF6B2B';
 const YELLOW = '#FFB800';
 const BLUE = '#3B82F6';
 
-// ADDED: The new SMS Logs path to your navigation array
 const navItems = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/send-sms', label: 'Send SMS Alert', icon: MessageSquare, accent: ORANGE },
-  { path: '/admin/sms-logs', label: 'Broadcast History', icon: History, accent: ORANGE }, // <--- NEW ITEM
+  { path: '/admin/sms-logs', label: 'Broadcast History', icon: History, accent: ORANGE }, 
   { path: '/admin/evacuation-status', label: 'Evacuation Status', icon: Building2 },
   { path: '/admin/evacuees', label: 'Evacuees List', icon: Users },
   { path: '/admin/flood-monitoring', label: 'Flood Monitoring', icon: Activity, accent: YELLOW },
-  { path: '/admin/manage-users', label: 'Manage Users', icon: UserCog },
+  // ADDED: hideFromStaff flag so standard staff can't see this page
+  { path: '/admin/manage-users', label: 'Manage Users', icon: UserCog, hideFromStaff: true },
   { path: '/admin/manage-admins', label: 'Manage Admins', icon: ShieldCheck, superAdminOnly: true },
 ];
 
@@ -32,6 +32,7 @@ export function AdminLayout() {
   const { user, logout, setShowLogin } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+  
   const isSuperAdmin = user?.role === 'superadmin';
   const isStaff = user?.role === 'staff';
 
@@ -60,9 +61,10 @@ export function AdminLayout() {
     );
   }
 
-  // Staff cannot access manage-admins
+  // UPDATED FILTER LOGIC: Now checks for both superAdmin and staff restrictions
   const visibleNavItems = navItems.filter(item => {
     if (item.superAdminOnly && !isSuperAdmin) return false;
+    if (item.hideFromStaff && isStaff) return false;
     return true;
   });
 
@@ -98,7 +100,7 @@ export function AdminLayout() {
         {isStaff && (
           <div className="mt-2 px-3 py-2 rounded-xl" style={{ backgroundColor: `${BLUE}15`, border: `1px solid ${BLUE}30` }}>
             <p className="text-xs" style={{ color: BLUE }}>
-              <span className="font-bold">Staff:</span> Full access except Manage Admins & approvals
+              <span className="font-bold">Staff:</span> Operations view only. User management disabled.
             </p>
           </div>
         )}
