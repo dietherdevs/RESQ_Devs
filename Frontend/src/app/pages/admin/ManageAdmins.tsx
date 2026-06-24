@@ -10,8 +10,9 @@ import { useApp } from '../../context/AppContext';
 const NAVY = '#0D1B2A';
 const ORANGE = '#FF6B2B';
 const YELLOW = '#FFB800';
+const BLUE = '#3B82F6'; // Added Staff Blue
 
-type AdminRole = 'admin' | 'superadmin';
+type AdminRole = 'admin' | 'superadmin' | 'staff'; // Added 'staff'
 
 const emptyForm = {
   name: '',
@@ -34,7 +35,6 @@ export function ManageAdmins() {
   const { user: currentUser } = useApp();
   const isSuperAdmin = currentUser?.role === 'superadmin';
 
-  // SPEED HACK: Instantly load cached admins
   const [admins, setAdmins] = useState<AdminUser[]>(() => {
     const cached = localStorage.getItem('manage_admins_cache');
     return cached ? JSON.parse(cached) : [];
@@ -45,7 +45,6 @@ export function ManageAdmins() {
   const [form, setForm] = useState(emptyForm);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  // Error and Success states for UI feedback
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -104,7 +103,14 @@ export function ManageAdmins() {
 
   const openEdit = (a: AdminUser) => {
     setError('');
-    setForm({ name: a.name, email: a.email, phone: a.phone || '', barangay: a.barangay || '', role: a.role as AdminRole, active: a.active });
+    setForm({ 
+      name: a.name, 
+      email: a.email, 
+      phone: a.phone || '', 
+      barangay: a.barangay || '', 
+      role: (a.role === 'super_admin' ? 'superadmin' : a.role) as AdminRole, 
+      active: a.active 
+    });
     setEditId(a.id);
     setShowForm(true);
   };
@@ -140,7 +146,7 @@ export function ManageAdmins() {
           const updatedAdmins = admins.map(a => a.id === editId ? data : a);
           setAdmins(updatedAdmins);
           localStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
-          setSuccess('Admin updated successfully.');
+          setSuccess('Account updated successfully.');
         } 
         else {
           const updatedAdmins = [...admins, data.admin];
@@ -152,11 +158,11 @@ export function ManageAdmins() {
         setShowForm(false);
         setTimeout(() => setSuccess(''), 5000);
       } else {
-        setError(data.message || 'Failed to save admin. Email might already exist.');
+        setError(data.message || 'Failed to save account. Email might already exist.');
       }
     } catch (error) {
       setError('Connection error. Please try again.');
-      console.error('Error saving admin:', error);
+      console.error('Error saving account:', error);
     } finally {
       setIsSaving(false);
     }
@@ -178,11 +184,11 @@ export function ManageAdmins() {
         setAdmins(updatedAdmins);
         localStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
         setDeleteConfirm(null);
-        setSuccess('Admin removed successfully.');
+        setSuccess('Account removed successfully.');
         setTimeout(() => setSuccess(''), 3000);
       }
     } catch (error) {
-      console.error('Error deleting admin:', error);
+      console.error('Error deleting account:', error);
     }
   };
 
@@ -190,7 +196,6 @@ export function ManageAdmins() {
     const admin = admins.find(a => a.id === id);
     if (!admin) return;
 
-    // Optimistic UI + Cache Update
     const updatedAdmins = admins.map(a => a.id === id ? { ...a, active: !a.active } : a);
     setAdmins(updatedAdmins);
     localStorage.setItem('manage_admins_cache', JSON.stringify(updatedAdmins));
@@ -208,12 +213,13 @@ export function ManageAdmins() {
       });
     } catch (error) {
       console.error('Error toggling status:', error);
-      fetchAdmins(); // Revert on fail
+      fetchAdmins(); 
     }
   };
 
-  const superAdminCount = admins.filter(a => a.role === 'superadmin').length;
+  const superAdminCount = admins.filter(a => a.role === 'superadmin' || a.role === 'super_admin').length;
   const adminCount = admins.filter(a => a.role === 'admin').length;
+  const staffCount = admins.filter(a => a.role === 'staff').length;
   const activeCount = admins.filter(a => a.active).length;
 
   return (
@@ -222,7 +228,7 @@ export function ManageAdmins() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2 mb-0.5">
-            <h1 className="font-black text-2xl" style={{ color: NAVY }}>Manage Admins</h1>
+            <h1 className="font-black text-2xl" style={{ color: NAVY }}>Manage System Access</h1>
             <span
               className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold"
               style={{ backgroundColor: `${ORANGE}15`, color: ORANGE }}
@@ -230,14 +236,14 @@ export function ManageAdmins() {
               <Crown size={11} /> Super Admin Only
             </span>
           </div>
-          <p className="text-gray-500 text-sm">Add, remove, or modify staff and admin accounts</p>
+          <p className="text-gray-500 text-sm">Provision internal accounts for LGU Staff, Barangay Admins, and Overlords</p>
         </div>
         <button
           onClick={openAdd}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-bold text-sm shadow-lg transition-all hover:opacity-90"
           style={{ background: `linear-gradient(135deg, ${ORANGE}, #e85a1a)` }}
         >
-          <Plus size={16} /> Add Admin
+          <Plus size={16} /> Create Account
         </button>
       </div>
 
@@ -248,12 +254,13 @@ export function ManageAdmins() {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Upgraded 4-Column Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Super Admins', value: superAdminCount, color: ORANGE, bg: '#FFEDD5', icon: <Crown size={16} /> },
-          { label: 'Admins', value: adminCount, color: YELLOW, bg: '#FEF9C3', icon: <ShieldCheck size={16} /> },
-          { label: 'Active Accounts', value: activeCount, color: '#22C55E', bg: '#DCFCE7', icon: <CheckCircle size={16} /> },
+          { label: 'Barangay Admins', value: adminCount, color: YELLOW, bg: '#FEF9C3', icon: <ShieldCheck size={16} /> },
+          { label: 'Operations Staff', value: staffCount, color: BLUE, bg: '#EFF6FF', icon: <User size={16} /> },
+          { label: 'Active Logins', value: activeCount, color: '#22C55E', bg: '#DCFCE7', icon: <CheckCircle size={16} /> },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: s.bg, color: s.color }}>
@@ -266,15 +273,12 @@ export function ManageAdmins() {
       </div>
 
       {/* Security Notice */}
-      <div
-        className="rounded-2xl p-4 flex items-center gap-4 border"
-        style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }}
-      >
+      <div className="rounded-2xl p-4 flex items-center gap-4 border" style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }}>
         <ShieldAlert size={20} style={{ color: YELLOW }} className="flex-shrink-0" />
         <div>
-          <p className="font-bold text-sm" style={{ color: '#92400E' }}>Strict Access Control Zone</p>
+          <p className="font-bold text-sm" style={{ color: '#92400E' }}>Role Hierarchy Notice</p>
           <p className="text-xs text-yellow-700 mt-0.5">
-            This page is accessible only to Super Admins. All changes are logged. Avoid creating duplicate accounts or revoking access without authorization.
+            <strong>Staff:</strong> Can trigger SMS & view lists. <strong>Admins:</strong> Can verify resident registrations. <strong>Super Admins:</strong> Can access this control panel.
           </p>
         </div>
       </div>
@@ -298,156 +302,162 @@ export function ManageAdmins() {
 
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Desktop Table */}
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100" style={{ backgroundColor: '#F9FAFB' }}>
-                <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Admin</th>
+                <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">User</th>
                 <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Phone</th>
                 <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Barangay</th>
-                <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Created</th>
-                <th className="text-center px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Role</th>
-                <th className="text-center px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Registered</th>
+                <th className="text-center px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Permission</th>
+                <th className="text-center px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Login Status</th>
                 <th className="text-center px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(a => (
-                <tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0"
-                        style={{ background: a.role === 'superadmin' ? `linear-gradient(135deg, ${ORANGE}, #e85a1a)` : `linear-gradient(135deg, ${YELLOW}, #e0a000)` }}
-                      >
-                        {a.name?.[0] || '?'}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-sm" style={{ color: NAVY }}>{a.name}</p>
-                          {a.id === parseInt(currentUser?.id || '0') && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded font-bold" style={{ backgroundColor: '#F0FDF4', color: '#166534' }}>
-                              YOU
-                            </span>
-                          )}
+              {filtered.map(a => {
+                const isSuper = a.role === 'superadmin' || a.role === 'super_admin';
+                const isStaff = a.role === 'staff';
+                return (
+                  <tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0"
+                          style={{ 
+                            background: isSuper 
+                              ? `linear-gradient(135deg, ${ORANGE}, #e85a1a)` 
+                              : isStaff 
+                              ? `linear-gradient(135deg, ${BLUE}, #1d4ed8)` 
+                              : `linear-gradient(135deg, ${YELLOW}, #e0a000)` 
+                          }}
+                        >
+                          {a.name?.[0] || '?'}
                         </div>
-                        <p className="text-xs text-gray-400">{a.email}</p>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-sm" style={{ color: NAVY }}>{a.name}</p>
+                            {a.id === parseInt(currentUser?.id || '0') && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded font-bold" style={{ backgroundColor: '#F0FDF4', color: '#166534' }}>
+                                YOU
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400">{a.email}</p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-sm text-gray-600">{a.phone || 'N/A'}</td>
-                  <td className="px-5 py-4">
-                    <span className="flex items-center gap-1.5 text-sm text-gray-600">
-                      <MapPin size={11} className="text-gray-400" />
-                      {a.barangay || 'N/A'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-sm text-gray-500">{a.createdAt || 'N/A'}</td>
-                  <td className="px-5 py-4 text-center">
-                    <span
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
-                      style={{
-                        backgroundColor: a.role === 'superadmin' ? `${ORANGE}15` : `${YELLOW}20`,
-                        color: a.role === 'superadmin' ? ORANGE : '#92400E',
-                      }}
-                    >
-                      {a.role === 'superadmin' ? <Crown size={10} /> : <ShieldCheck size={10} />}
-                      {a.role === 'superadmin' ? 'Super Admin' : 'Admin'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-center">
-                    <button
-                      onClick={() => toggleActive(a.id)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all"
-                      style={{
-                        backgroundColor: a.active ? '#DCFCE7' : '#F3F4F6',
-                        color: a.active ? '#166534' : '#6B7280',
-                      }}
-                    >
-                      {a.active ? <CheckCircle size={10} /> : <XCircle size={10} />}
-                      {a.active ? 'Active' : 'Inactive'}
-                    </button>
-                  </td>
-                  <td className="px-5 py-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => openEdit(a)}
-                        className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-400 hover:text-blue-600 transition-colors"
-                        title="Edit admin"
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-600">{a.phone || 'N/A'}</td>
+                    <td className="px-5 py-4">
+                      <span className="flex items-center gap-1.5 text-sm text-gray-600">
+                        <MapPin size={11} className="text-gray-400" />
+                        {a.barangay || 'N/A'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-500">{a.createdAt || 'N/A'}</td>
+                    <td className="px-5 py-4 text-center">
+                      <span
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold capitalize"
+                        style={{
+                          backgroundColor: isSuper ? `${ORANGE}15` : isStaff ? `${BLUE}15` : `${YELLOW}20`,
+                          color: isSuper ? ORANGE : isStaff ? BLUE : '#92400E',
+                        }}
                       >
-                        <Pencil size={13} />
-                      </button>
+                        {isSuper ? <Crown size={10} /> : isStaff ? <User size={10} /> : <ShieldCheck size={10} />}
+                        {isSuper ? 'Super Admin' : a.role}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-center">
                       <button
-                        onClick={() => setDeleteConfirm(a.id)}
-                        disabled={a.role === 'superadmin' && superAdminCount <= 1}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={a.role === 'superadmin' && superAdminCount <= 1 ? 'Cannot delete the last super admin' : 'Delete admin'}
+                        onClick={() => toggleActive(a.id)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all"
+                        style={{
+                          backgroundColor: a.active ? '#DCFCE7' : '#F3F4F6',
+                          color: a.active ? '#166534' : '#6B7280',
+                        }}
                       >
-                        <Trash2 size={13} />
+                        {a.active ? <CheckCircle size={10} /> : <XCircle size={10} />}
+                        {a.active ? 'Active' : 'Revoked'}
                       </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => openEdit(a)}
+                          className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-400 hover:text-blue-600 transition-colors"
+                          title="Edit account"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(a.id)}
+                          disabled={isSuper && superAdminCount <= 1}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          title={isSuper && superAdminCount <= 1 ? 'Cannot delete the last super admin' : 'Delete account'}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
-        {/* Mobile Cards */}
+        {/* Mobile View */}
         <div className="lg:hidden divide-y divide-gray-50">
-          {filtered.map(a => (
-            <div key={a.id} className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                    style={{ background: a.role === 'superadmin' ? ORANGE : YELLOW }}
+          {filtered.map(a => {
+            const isSuper = a.role === 'superadmin' || a.role === 'super_admin';
+            const isStaff = a.role === 'staff';
+            return (
+              <div key={a.id} className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                      style={{ background: isSuper ? ORANGE : isStaff ? BLUE : YELLOW }}
+                    >
+                      {a.name?.[0] || '?'}
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm" style={{ color: NAVY }}>{a.name}</p>
+                      <p className="text-xs text-gray-400">{a.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => openEdit(a)} className="p-1.5 rounded-lg bg-blue-50 text-blue-400">
+                      <Pencil size={12} />
+                    </button>
+                    <button onClick={() => setDeleteConfirm(a.id)} className="p-1.5 rounded-lg bg-red-50 text-red-400">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold capitalize"
+                    style={{ backgroundColor: isSuper ? `${ORANGE}15` : isStaff ? `${BLUE}15` : `${YELLOW}20`, color: isSuper ? ORANGE : isStaff ? BLUE : '#92400E' }}
                   >
-                    {a.name?.[0] || '?'}
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm" style={{ color: NAVY }}>{a.name}</p>
-                    <p className="text-xs text-gray-400">{a.email}</p>
-                  </div>
-                </div>
-                <div className="flex gap-1.5">
-                  <button onClick={() => openEdit(a)} className="p-1.5 rounded-lg bg-blue-50 text-blue-400">
-                    <Pencil size={12} />
-                  </button>
-                  <button onClick={() => setDeleteConfirm(a.id)} className="p-1.5 rounded-lg bg-red-50 text-red-400">
-                    <Trash2 size={12} />
-                  </button>
+                    {isSuper ? <Crown size={10} /> : isStaff ? <User size={10} /> : <ShieldCheck size={10} />}
+                    {isSuper ? 'Super Admin' : a.role}
+                  </span>
+                  <span
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
+                    style={{ backgroundColor: a.active ? '#DCFCE7' : '#F3F4F6', color: a.active ? '#166534' : '#6B7280' }}
+                  >
+                    {a.active ? 'Active' : 'Inactive'}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-gray-400 px-1">
+                    <MapPin size={10} />{a.barangay || 'N/A'}
+                  </span>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <span
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
-                  style={{ backgroundColor: a.role === 'superadmin' ? `${ORANGE}15` : `${YELLOW}20`, color: a.role === 'superadmin' ? ORANGE : '#92400E' }}
-                >
-                  {a.role === 'superadmin' ? <Crown size={10} /> : <ShieldCheck size={10} />}
-                  {a.role === 'superadmin' ? 'Super Admin' : 'Admin'}
-                </span>
-                <span
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
-                  style={{ backgroundColor: a.active ? '#DCFCE7' : '#F3F4F6', color: a.active ? '#166534' : '#6B7280' }}
-                >
-                  {a.active ? 'Active' : 'Inactive'}
-                </span>
-                <span className="flex items-center gap-1 text-xs text-gray-400 px-2">
-                  <MapPin size={10} />{a.barangay || 'N/A'}
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
-
-        {filtered.length === 0 && (
-          <div className="text-center py-12">
-            <ShieldCheck size={32} className="mx-auto mb-2 text-gray-200" />
-            <p className="text-gray-400 text-sm">No admins found</p>
-          </div>
-        )}
       </div>
 
       {/* Add/Edit Modal */}
@@ -461,7 +471,7 @@ export function ManageAdmins() {
                   <ShieldCheck size={16} style={{ color: ORANGE }} />
                 </div>
                 <h3 className="font-bold text-lg" style={{ color: NAVY }}>
-                  {editId !== null ? 'Edit Admin Account' : 'Add Admin Account'}
+                  {editId !== null ? 'Modify System Account' : 'Provision New Account'}
                 </h3>
               </div>
               <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">
@@ -470,8 +480,6 @@ export function ManageAdmins() {
             </div>
 
             <div className="px-6 py-5 space-y-4">
-              
-              {/* Form Level Error */}
               {error && (
                 <div className="p-3 rounded-xl bg-red-50 border border-red-100 flex items-start gap-2 text-red-600">
                   <ShieldAlert size={16} className="mt-0.5 flex-shrink-0" />
@@ -486,7 +494,7 @@ export function ManageAdmins() {
                   onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none"
                   style={{ borderColor: 'rgba(0,0,0,0.1)', color: NAVY }}
-                  placeholder="e.g. Admin Cruz"
+                  placeholder="e.g. Officer Cruz"
                 />
               </div>
 
@@ -498,7 +506,7 @@ export function ManageAdmins() {
                   onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
                   className="w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none"
                   style={{ borderColor: 'rgba(0,0,0,0.1)', color: NAVY }}
-                  placeholder="admin@resq.gov.ph"
+                  placeholder="officer@resq.gov.ph"
                 />
               </div>
 
@@ -514,7 +522,7 @@ export function ManageAdmins() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Barangay</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Assigned Area</label>
                   <select
                     value={form.barangay}
                     onChange={e => setForm(p => ({ ...p, barangay: e.target.value }))}
@@ -527,46 +535,41 @@ export function ManageAdmins() {
                 </div>
               </div>
 
-              {/* Role */}
+              {/* UPGRADED 3-COLUMN ROLE SELECTOR */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Role *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['admin', 'superadmin'] as AdminRole[]).map(r => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setForm(p => ({ ...p, role: r }))}
-                      className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all border"
-                      style={{
-                        backgroundColor: form.role === r
-                          ? (r === 'superadmin' ? `${ORANGE}15` : `${YELLOW}20`)
-                          : '#F9FAFB',
-                        color: form.role === r
-                          ? (r === 'superadmin' ? ORANGE : '#92400E')
-                          : '#9CA3AF',
-                        borderColor: form.role === r
-                          ? (r === 'superadmin' ? `${ORANGE}40` : `${YELLOW}60`)
-                          : 'transparent',
-                      }}
-                    >
-                      {r === 'superadmin' ? <Crown size={14} /> : <ShieldCheck size={14} />}
-                      {r === 'superadmin' ? 'Super Admin' : 'Admin'}
-                    </button>
-                  ))}
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Access Level *</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['staff', 'admin', 'superadmin'] as AdminRole[]).map(r => {
+                    const isSelected = form.role === r;
+                    const rColor = r === 'superadmin' ? ORANGE : r === 'admin' ? '#92400E' : BLUE;
+                    const rBg = r === 'superadmin' ? `${ORANGE}15` : r === 'admin' ? `${YELLOW}20` : `${BLUE}15`;
+                    const rBorder = r === 'superadmin' ? `${ORANGE}50` : r === 'admin' ? `${YELLOW}60` : `${BLUE}50`;
+                    
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setForm(p => ({ ...p, role: r }))}
+                        className="flex flex-col items-center justify-center gap-1 py-3 rounded-xl text-xs font-bold transition-all border"
+                        style={{
+                          backgroundColor: isSelected ? rBg : '#F9FAFB',
+                          color: isSelected ? rColor : '#9CA3AF',
+                          borderColor: isSelected ? rBorder : 'rgba(0,0,0,0.05)',
+                        }}
+                      >
+                        {r === 'superadmin' ? <Crown size={16} /> : r === 'admin' ? <ShieldCheck size={16} /> : <User size={16} />}
+                        <span className="capitalize">{r === 'superadmin' ? 'Super Admin' : r}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                {form.role === 'superadmin' && (
-                  <p className="text-xs text-orange-600 mt-2 flex items-center gap-1.5">
-                    <ShieldAlert size={11} />
-                    Super Admins have full system access including this Manage Admins page.
-                  </p>
-                )}
               </div>
 
-              {/* Active Status */}
+              {/* Active Toggle */}
               <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-100" style={{ backgroundColor: '#F9FAFB' }}>
                 <div>
-                  <p className="text-sm font-semibold" style={{ color: NAVY }}>Account Active</p>
-                  <p className="text-xs text-gray-400">Allow this admin to log in</p>
+                  <p className="text-sm font-semibold" style={{ color: NAVY }}>Login Permission</p>
+                  <p className="text-xs text-gray-400">Allow user to authenticate</p>
                 </div>
                 <button
                   type="button"
@@ -595,7 +598,7 @@ export function ManageAdmins() {
                 {isSaving ? (
                   <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                 ) : <Save size={14} />}
-                {editId !== null ? 'Save Changes' : 'Send Invite'}
+                {editId !== null ? 'Save Account' : 'Dispatch Setup Link'}
               </button>
             </div>
           </div>
@@ -610,15 +613,14 @@ export function ManageAdmins() {
             <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
               <Trash2 size={24} className="text-red-500" />
             </div>
-            <h3 className="font-bold text-lg mb-1" style={{ color: NAVY }}>Remove Admin?</h3>
+            <h3 className="font-bold text-lg mb-1" style={{ color: NAVY }}>Revoke Account?</h3>
             <p className="text-gray-500 text-sm mb-2">
-              You are about to remove{' '}
+              You are about to delete{' '}
               <span className="font-bold" style={{ color: NAVY }}>
                 {admins.find(a => a.id === deleteConfirm)?.name}
-              </span>{' '}
-              from the admin team.
+              </span>.
             </p>
-            <p className="text-xs text-gray-400 mb-6">This action cannot be undone and will immediately revoke their access.</p>
+            <p className="text-xs text-gray-400 mb-6">This will immediately terminate their active sessions and destroy their access.</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
@@ -630,7 +632,7 @@ export function ManageAdmins() {
                 onClick={() => handleDelete(deleteConfirm)}
                 className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm bg-red-500 flex items-center justify-center gap-2"
               >
-                <Trash2 size={13} /> Remove
+                <Trash2 size={13} /> Terminate
               </button>
             </div>
           </div>

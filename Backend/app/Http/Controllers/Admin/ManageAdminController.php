@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Password;
 
 class ManageAdminController extends Controller
 {
-    // Fetch all admins and superadmins
+    // Fetch all internal platform accounts
     public function index()
     {
         $admins = User::whereIn('role', ['admin', 'super_admin', 'staff'])
@@ -19,7 +19,7 @@ class ManageAdminController extends Controller
             ->get()
             ->map(function($admin) {
                 $admin->createdAt = $admin->created_at->format('m/d/Y');
-                $admin->active = $admin->status === 'approved'; // Maps DB status to frontend Active toggle
+                $admin->active = $admin->status === 'approved'; 
                 $admin->role = $admin->role === 'super_admin' ? 'superadmin' : $admin->role;
                 return $admin;
             });
@@ -27,7 +27,7 @@ class ManageAdminController extends Controller
         return response()->json($admins);
     }
 
-    // CREATE new admin and send them a password setup link
+    // Provision new user & blast Maileroo Setup link
     public function store(Request $request)
     {
         $request->validate([
@@ -36,10 +36,8 @@ class ManageAdminController extends Controller
             'role' => 'required|in:admin,superadmin,staff',
         ]);
 
-        // Map frontend role to DB role
         $dbRole = $request->role === 'superadmin' ? 'super_admin' : $request->role;
 
-        // Create the user with a secure random password (they overwrite this via the email link)
         $admin = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -47,14 +45,12 @@ class ManageAdminController extends Controller
             'phone_number' => $request->phone,
             'address' => $request->barangay,
             'role' => $dbRole,
-            'status' => $request->active ? 'approved' : 'inactive', // Uses existing status column
-            'is_approved' => true, // SMS enabled by default
+            'status' => $request->active ? 'approved' : 'inactive', 
+            'is_approved' => true, 
         ]);
 
-        // Send the Maileroo Reset Password Link (Setup Link)
         Password::broker()->sendResetLink(['email' => $admin->email]);
 
-        // Format for frontend
         $admin->createdAt = $admin->created_at->format('m/d/Y');
         $admin->phone = $admin->phone_number;
         $admin->barangay = $admin->address;
@@ -62,12 +58,12 @@ class ManageAdminController extends Controller
         $admin->role = $admin->role === 'super_admin' ? 'superadmin' : $admin->role;
 
         return response()->json([
-            'message' => 'Admin created successfully. An email has been sent for them to set their password.',
+            'message' => 'Account dispatched. An email invite has been sent to set up their secure password.',
             'admin' => $admin
         ], 201);
     }
 
-    // Update existing admin details
+    // Update account profile & permissions
     public function update(Request $request, $id)
     {
         $admin = User::findOrFail($id);
@@ -98,22 +94,20 @@ class ManageAdminController extends Controller
         return response()->json($admin);
     }
 
-    // Toggle active status
     public function toggleStatus(Request $request, $id)
     {
         $admin = User::findOrFail($id);
         $admin->status = $request->active ? 'approved' : 'inactive';
         $admin->save();
 
-        return response()->json(['message' => 'Status updated']);
+        return response()->json(['message' => 'Status locked']);
     }
 
-    // Delete admin
     public function destroy($id)
     {
         $admin = User::findOrFail($id);
         $admin->delete();
 
-        return response()->json(['message' => 'Admin deleted']);
+        return response()->json(['message' => 'Account destroyed']);
     }
 }
